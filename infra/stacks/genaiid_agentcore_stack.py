@@ -4,6 +4,7 @@
 import aws_cdk as cdk
 from constructs import Construct
 
+from .backend_stack import BackendStack
 from .frontend_stack import GenAIIDAgentCoreFrontendStack
 
 
@@ -23,4 +24,11 @@ class GenAIIDAgentCoreStack(cdk.Stack):
         self.frontend_stack = GenAIIDAgentCoreFrontendStack(
             self,
             props,
+        )
+
+        # Deploy backend stack (AgentCore runtime)
+        self.backend_stack = BackendStack(
+            self,
+            f"{construct_id}-backend",
+            config=props,
         )

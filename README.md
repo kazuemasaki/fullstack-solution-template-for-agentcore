@@ -1,13 +1,19 @@
 # GenAIID AgentCore Starter Pack
 
-A minimal full-stack starter pack with AWS Cognito authentication, React frontend using Cloudscape Design System, and CDK infrastructure.
+The GenAIID AgentCore Starter Pack (GASP) is a starter project repository that enables developers to use CDK to quickly deploy a secured, web-accessible React frontend connected to an AgentCore backend. Its purpose is to accelerate customer engagements from weeks to days by handling the undifferentiated heavy lifting of infrastructure setup and to enable vibe-coding style development on top.
+
+## Architecture
+
+![Architecture Diagram](docs/img/GASP-architecture-20251023.png)
 
 ## What's Included
 
 - **Frontend**: React with TypeScript, Vite build system, Cloudscape Design System
+- **Backend**: AWS Bedrock AgentCore runtime with configurable agent patterns
 - **Authentication**: AWS Cognito User Pool with OAuth support
-- **Infrastructure**: CDK deployment with S3 static hosting and CloudFront distribution
+- **Infrastructure**: CDK deployment with S3 static hosting, CloudFront distribution, and AgentCore runtime
 - **Styling**: Dark/Light theme support
+- **Agent Patterns**: Pluggable agent implementations (currently includes strands-single-agent)
 
 ## Prerequisites
 
@@ -64,8 +70,16 @@ genaiid-agentcore-starter-pack/
 ├── infra/                   # CDK infrastructure code
 │   ├── stacks/             # CDK stack definitions
 │   ├── utils/              # Utility functions
-│   ├── constructs/         # Custom CDK constructs
+│   ├── custom_constructs/  # Custom CDK constructs
 │   ├── app.py              # CDK app entry point
+│   ├── config.yaml         # Configuration
+│   └── requirements.txt
+├── patterns/               # Agent pattern implementations
+│   └── strands-single-agent/ # Basic strands agent pattern
+│       ├── basic_agent.py  # Agent implementation
+│       ├── requirements.txt # Agent dependencies
+│       └── Dockerfile      # Container configuration
+└── README.md
 │   ├── config.yaml         # Configuration
 │   └── requirements.txt
 └── README.md
@@ -78,6 +92,7 @@ Edit `infra/config.yaml` to customize:
 - Stack name
 - Custom domain (optional)
 - Certificate ARN (optional)
+- Backend agent pattern selection
 
 ## Features
 
