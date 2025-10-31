@@ -444,6 +444,7 @@ export class BackendStack extends cdk.NestedStack {
    *
    * Implementation: infra-cdk/lambdas/feedback/index.py
    */
+
   private createFeedbackApi(config: AppConfig, feedbackTable: dynamodb.Table): void {
     // Create Lambda function for feedback using Python
     const feedbackLambda = new PythonFunction(this, "FeedbackLambda", {
@@ -462,9 +463,12 @@ export class BackendStack extends cdk.NestedStack {
     // Grant Lambda permissions to write to DynamoDB
     feedbackTable.grantWriteData(feedbackLambda)
 
-    // CORS allows all origins (*) due to nested stack deployment order (CloudFront URL not available yet).
-    // Security: Cognito JWT authentication protects all endpoints - requests without valid tokens are rejected.
-    // TODO: Lock down CORS for defense-in-depth.
+    /*
+     * CORS TODO: Wildcard (*) used because Backend deploys before Frontend in nested stack order.
+     * For Lambda proxy integrations, the Lambda's ALLOWED_ORIGINS env var is the primary CORS control.
+     * API Gateway defaultCorsPreflightOptions below only handles OPTIONS preflight requests.
+     * See detailed explanation and fix options in: infra-cdk/lambdas/feedback/index.py
+     */
     const api = new apigateway.RestApi(this, "FeedbackApi", {
       restApiName: `${config.stack_name_base}-api`,
       description: "API for user feedback and future endpoints",

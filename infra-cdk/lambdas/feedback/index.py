@@ -1,3 +1,38 @@
+"""
+Feedback API Lambda Handler
+
+CORS CONFIGURATION TODO:
+
+THE ISSUE - Bidirectional Dependency:
+- Frontend needs from Backend: Runtime ARN, Cognito config (via SSM)
+- Backend needs from Frontend: CloudFront URL (via frontendStack.distribution.distributionDomainName)
+
+CURRENT STATE:
+- ALLOWED_ORIGINS='*' allows any origin (Cognito JWT still protects endpoints)
+- This Lambda's ALLOWED_ORIGINS is the PRIMARY CORS control (API Gateway only handles OPTIONS)
+
+OPTIONS TO FIX:
+
+1. Custom Resource Post-Deployment Update:
+   - Custom resource = Lambda-backed CloudFormation resource that runs custom logic during stack lifecycle
+   - Flow: Frontend deploys → writes CloudFront URL to SSM → custom resource Lambda triggers
+   - Custom resource reads SSM, updates this Lambda's ALLOWED_ORIGINS via AWS SDK
+   - Pros: Automated, single deployment | Cons: Complex (~150 lines Lambda code)
+
+2. Two-Phase Deployment (Separate Stacks):
+   - Phase 1: Deploy Backend + Frontend independently
+   - Phase 2: Update Backend with CloudFront URL, redeploy
+   - Pros: Clean separation | Cons: Two deployment commands
+
+3. Accept Current State:
+   - Keep wildcard, rely on Cognito JWT as primary security
+   - Pros: No changes needed | Cons: Not security best practice
+
+See: 
+- https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors.html
+- https://docs.aws.amazon.com/cdk/v2/guide/resources.html#resources-referencing
+"""
+
 import json
 import os
 import re
