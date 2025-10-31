@@ -1,0 +1,2 @@
+# AWS SDK for Python (included in Lambda runtime, but documented here for reference)
+boto3>=1.34.0

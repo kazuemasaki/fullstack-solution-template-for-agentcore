@@ -11,7 +11,6 @@ import * as logs from "aws-cdk-lib/aws-logs"
 // Note: Using CfnResource for BedrockAgentCore as the L2 construct may not be available yet
 import { PythonFunction } from "@aws-cdk/aws-lambda-python-alpha"
 import * as lambda from "aws-cdk-lib/aws-lambda"
-import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs"
 import { Construct } from "constructs"
 import { AppConfig } from "./utils/config-manager"
 import { AgentCoreRole } from "./utils/agentcore-role"
@@ -50,8 +49,11 @@ export class BackendStack extends cdk.NestedStack {
     // Store runtime ARN in SSM for frontend stack
     this.createRuntimeSSMParameters(props.config)
 
-    // Create Feedback API resources
-    this.createFeedbackApi(props.config)
+    // Create Feedback DynamoDB table (example of application data storage)
+    const feedbackTable = this.createFeedbackTable(props.config)
+
+    // Create Feedback API resources (example of best-practice API Gateway + Lambda pattern)
+    this.createFeedbackApi(props.config, feedbackTable)
   }
 
   private createCognitoUserPool(config: AppConfig): void {
@@ -390,8 +392,8 @@ export class BackendStack extends cdk.NestedStack {
     })
   }
 
-  private createFeedbackApi(config: AppConfig): void {
-    // Create DynamoDB table for feedback
+  // Creates a DynamoDB table for storing user feedback.
+  private createFeedbackTable(config: AppConfig): dynamodb.Table {
     const feedbackTable = new dynamodb.Table(this, "FeedbackTable", {
       tableName: `${config.stack_name_base}-feedback`,
       partitionKey: {
@@ -416,29 +418,34 @@ export class BackendStack extends cdk.NestedStack {
       projectionType: dynamodb.ProjectionType.ALL,
     })
 
-    // Create Lambda function for feedback using NodejsFunction for automatic TypeScript compilation and bundling
-    const feedbackLambda = new NodejsFunction(this, "FeedbackLambda", {
+    return feedbackTable
+  }
+
+  /**
+   * Creates an API Gateway with Lambda integration for the feedback endpoint.
+   * This is an EXAMPLE implementation demonstrating best practices for API Gateway + Lambda.
+   */
+  private createFeedbackApi(config: AppConfig, feedbackTable: dynamodb.Table): void {
+    // Create Lambda function for feedback using Python
+    const feedbackLambda = new PythonFunction(this, "FeedbackLambda", {
       functionName: `${config.stack_name_base}-feedback`,
-      runtime: lambda.Runtime.NODEJS_20_X,
-      entry: path.join(__dirname, "..", "lambdas", "feedback", "index.ts"),
+      runtime: lambda.Runtime.PYTHON_3_13,
+      entry: path.join(__dirname, "..", "lambdas", "feedback"),
       handler: "handler",
       environment: {
         TABLE_NAME: feedbackTable.tableName,
-        ALLOWED_ORIGINS: '*',
+        ALLOWED_ORIGINS: "*", // Wildcard CORS - see API Gateway comment below for security rationale
       },
       timeout: cdk.Duration.seconds(30),
       logRetention: logs.RetentionDays.ONE_WEEK,
-      bundling: {
-        minify: true,
-        sourceMap: true,
-        externalModules: ["@aws-sdk/*"], // AWS SDK v3 is included in Lambda runtime
-      },
     })
 
     // Grant Lambda permissions to write to DynamoDB
     feedbackTable.grantWriteData(feedbackLambda)
 
-    // Create API Gateway with CORS allowing all origins (protected by Cognito authentication)
+    // CORS allows all origins (*) due to nested stack deployment order (CloudFront URL not available yet).
+    // Security: Cognito JWT authentication protects all endpoints - requests without valid tokens are rejected.
+    // TODO: Lock down CORS for defense-in-depth.
     const api = new apigateway.RestApi(this, "FeedbackApi", {
       restApiName: `${config.stack_name_base}-api`,
       description: "API for user feedback and future endpoints",
