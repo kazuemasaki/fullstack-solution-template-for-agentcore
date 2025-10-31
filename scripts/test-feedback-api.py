@@ -6,6 +6,7 @@ Test script for Feedback API
 import sys
 import json
 import getpass
+from pathlib import Path
 from typing import Dict, Optional, Tuple
 import boto3
 import requests
@@ -16,13 +17,27 @@ from colorama import Fore, Style, init
 init(autoreset=True)
 
 def load_stack_name() -> str:
-    """Load stack name from config.yaml or use default."""
-    try:
-        with open("infra-cdk/config.yaml", "r") as f:
-            config = yaml.safe_load(f)
-            return config.get("stack_name_base", "genaiid-agentcore-starter-pack")
-    except FileNotFoundError:
-        return "genaiid-agentcore-starter-pack"
+    """Load stack name from config.yaml."""
+    # Get the script's directory and navigate to config.yaml
+    script_dir = Path(__file__).parent
+    config_path = script_dir.parent / "infra-cdk" / "config.yaml"
+    
+    if not config_path.exists():
+        raise FileNotFoundError(
+            f"Configuration file not found at: {config_path}\n"
+            f"Make sure you're running from the project directory."
+        )
+    
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+    
+    if "stack_name_base" not in config:
+        raise KeyError(
+            f"'stack_name_base' not found in {config_path}\n"
+            f"Please add 'stack_name_base' to your config.yaml"
+        )
+    
+    return config["stack_name_base"]
 
 
 def fetch_config_from_ssm(stack_name: str) -> Dict[str, str]:
