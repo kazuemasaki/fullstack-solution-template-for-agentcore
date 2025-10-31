@@ -424,6 +424,25 @@ export class BackendStack extends cdk.NestedStack {
   /**
    * Creates an API Gateway with Lambda integration for the feedback endpoint.
    * This is an EXAMPLE implementation demonstrating best practices for API Gateway + Lambda.
+   *
+   * API Contract - POST /feedback
+   * Authorization: Bearer <cognito-access-token> (required)
+   *
+   * Request Body:
+   *   sessionId: string (required, max 100 chars, alphanumeric with -_) - Conversation session ID
+   *   message: string (required, max 5000 chars) - Agent's response being rated
+   *   feedbackType: "positive" | "negative" (required) - User's rating
+   *   comment: string (optional, max 5000 chars) - User's explanation for rating
+   *
+   * Success Response (200):
+   *   { success: true, feedbackId: string }
+   *
+   * Error Responses:
+   *   400: { error: string } - Validation failure (missing fields, invalid format)
+   *   401: { error: "Unauthorized" } - Invalid/missing JWT token
+   *   500: { error: "Internal server error" } - DynamoDB or processing error
+   *
+   * Implementation: infra-cdk/lambdas/feedback/index.py
    */
   private createFeedbackApi(config: AppConfig, feedbackTable: dynamodb.Table): void {
     // Create Lambda function for feedback using Python
