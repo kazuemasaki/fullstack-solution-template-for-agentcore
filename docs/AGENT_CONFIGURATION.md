@@ -1,0 +1,146 @@
+# Agent Configuration Guide
+
+GASP supports any agent framework that can run in a container. This guide covers how to use existing patterns, create your own, and configure agent behavior.
+
+---
+
+## Existing Patterns
+
+### Strands Single Agent Pattern
+
+**Location**: `patterns/strands-single-agent/`
+
+A basic conversational agent using the Strands framework with AgentCore Memory integration.
+
+**What This Agent Does**:
+
+- Multi-turn conversational chat
+- Maintains conversation history with short-term memory
+- Learns user preferences, facts, and creates summaries with long-term memory
+- Streams responses for better UX
+- Authenticated via Cognito (user identity tracked in memory)
+
+**Key Configuration File**: `basic_agent.py`
+
+**Model Configuration**:
+
+```python
+bedrock_model = BedrockModel(
+    model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",  # ← Change model here
+    temperature=0.1
+)
+```
+
+**System Prompt**:
+
+```python
+system_prompt = """You are a helpful assistant. Answer questions clearly and concisely."""
+```
+
+**After making changes**: Redeploy with `cdk deploy` to rebuild the agent container.
+
+### LangGraph Pattern (Coming Soon)
+
+**Location**: `patterns/langgraph-single-agent/` (planned)
+
+---
+
+## Creating Your Own Agent Pattern
+
+### Step 1: Create Pattern Directory
+
+```bash
+mkdir -p patterns/my-custom-agent
+cd patterns/my-custom-agent
+```
+
+### Step 2: Implement Your Agent
+
+Create your agent code that:
+
+- Accepts HTTP requests from AgentCore Runtime
+- Processes user queries
+- Returns responses (streaming or non-streaming)
+- Integrates with AgentCore Memory (optional)
+
+**Example Structure**:
+
+```python
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
+
+app = BedrockAgentCoreApp()
+
+@app.entrypoint
+async def agent_handler(payload):
+    """Main entrypoint for the agent"""
+    user_query = payload.get("prompt")
+    user_id = payload.get("userId")
+    session_id = payload.get("runtimeSessionId")
+
+    # Your agent logic here
+    # ...
+
+    yield response
+
+if __name__ == "__main__":
+    app.run()
+```
+
+### Step 3: Create Dockerfile
+
+```dockerfile
+FROM public.ecr.aws/docker/library/python:3.13-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8080
+
+CMD ["python", "your_agent.py"]
+```
+
+### Step 4: Update CDK Configuration
+
+In `infra-cdk/config.yaml`:
+
+```yaml
+backend:
+  pattern: "my-custom-agent" # Your pattern directory name
+```
+
+**If your agent needs additional AWS services** (Knowledge Bases, DynamoDB, S3, etc.), modify the CDK stacks in `infra-cdk/lib/`:
+
+**Example**: Adding a Knowledge Base
+
+```typescript
+// Create your knowledge base construct
+const knowledgeBase = new bedrock.CfnKnowledgeBase(this, "KB", {
+  name: "MyKnowledgeBase",
+  // ... configuration
+});
+
+// Add to agent environment variables in backend-stack.ts
+EnvironmentVariables: {
+  KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
+  // ... other vars
+}
+```
+
+### Step 5: Deploy
+
+```bash
+cd infra-cdk
+cdk deploy
+```
+
+The CDK will automatically:
+
+- Build your Docker image
+- Push to ECR
+- Deploy to AgentCore Runtime
+
+For deployment details, see [Deployment Guide](DEPLOYMENT.md).
