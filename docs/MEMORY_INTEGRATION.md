@@ -2,11 +2,13 @@
 
 Quick, practical guide for integrating AWS Bedrock AgentCore Memory with your agents.
 
+AgentCore provides two types of memory: **short-term memory** stores raw conversation history, providing agents with context from recent interactions. **Long-term memory** uses AI-powered strategies to extract and store meaningful insights—such as session summaries, user preferences, and important facts—enabling agents to build deeper understanding over time. Learn more in the [Amazon Bedrock AgentCore Memory blog post](https://aws.amazon.com/blogs/machine-learning/amazon-bedrock-agentcore-memory-building-context-aware-agents/).
+
 ---
 
 ## Step 1: Configure Memory with CDK
 
-Memory resources are created using CloudFormation L1 constructs. **L2 constructs will be available in future releases.**
+Memory resources are created using [CloudFormation L1 constructs](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-bedrockagentcore-memory.html). **L2 constructs will be available in future releases.**
 
 ### Basic Memory (Short-Term Only)
 
@@ -78,6 +80,8 @@ new iam.PolicyStatement({
 
 ### Understanding Memory Configuration
 
+For complete configuration details, see the [AgentCore Memory Overview](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html) and [Memory API Reference](https://docs.aws.amazon.com/bedrock-agentcore/latest/APIReference/welcome.html).
+
 **Memory Parameters**
 
 - **EventExpiryDuration**: 7-365 days
@@ -97,6 +101,8 @@ new iam.PolicyStatement({
 ## Step 2: Integrate with Your Framework
 
 ### Using Strands?
+
+For complete Strands integration documentation, see the [official Strands Memory Integration guide](https://strandsagents.com/latest/documentation/docs/community/session-managers/agentcore-memory/).
 
 **Install:**
 
@@ -153,7 +159,7 @@ config = AgentCoreMemoryConfig(
 
 **💡 Example:** See this approach implemented in `patterns/strands-single-agent/basic_agent.py`
 
-**📚 Reference:** [Strands Memory Integration](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/strands-sdk-memory.html)
+**📚 Official AWS Guide:** [Strands SDK Memory Integration](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/strands-sdk-memory.html)
 
 #### Alternative: Hook-Based Approach
 
@@ -218,9 +224,11 @@ agent = Agent(
 
 **Use when:** Custom memory loading logic, combining multiple hooks, or fine-grained control needed.
 
-**💡 Example:** [AWS AgentCore Sample](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/main/01-tutorials/04-AgentCore-memory/01-short-term-memory/01-single-agent/with-strands-agent/)
+**💡 Complete Example:** See the [AWS AgentCore Samples repository](https://github.com/awslabs/amazon-bedrock-agentcore-samples) for working code examples, including this [Strands with hooks tutorial](https://github.com/awslabs/amazon-bedrock-agentcore-samples/blob/main/01-tutorials/04-AgentCore-memory/01-short-term-memory/01-single-agent/with-strands-agent/).
 
 ### Using LangGraph?
+
+For complete LangGraph integration documentation, see the [official LangGraph Memory Integration guide](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory-integrate-lang.html). For working code examples, explore the [LangChain AWS Integration samples](https://github.com/langchain-ai/langchain-aws/tree/main/samples/memory).
 
 **Install:**
 
@@ -287,24 +295,11 @@ graph = create_react_agent(
 )
 ```
 
-**📚 Reference:** [LangGraph Memory Integration](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory-integrate-lang.html)
-
 ---
 
-## Resources
+## Additional Resources
 
-### Documentation
+For more information and community support:
 
-- [AgentCore Memory Overview](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/memory.html)
-- [Memory API Reference](https://docs.aws.amazon.com/bedrock-agentcore/latest/APIReference/welcome.html)
-- [CloudFormation Resource](https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/aws-resource-bedrockagentcore-memory.html)
-
-### Code Examples
-
-- [AgentCore Samples Repository](https://github.com/awslabs/amazon-bedrock-agentcore-samples)
-- [LangChain AWS Integration](https://github.com/langchain-ai/langchain-aws/tree/main/samples/memory)
-- [Strands Integration](https://strandsagents.com/latest/documentation/docs/community/session-managers/agentcore-memory/)
-
-### Community
-
-- Slack: `#bedrock-agentcore-memory-interest`
+- **Community Slack**: `#bedrock-agentcore-memory-interest`
+- **All Code Examples**: [AgentCore Samples Repository](https://github.com/awslabs/amazon-bedrock-agentcore-samples)

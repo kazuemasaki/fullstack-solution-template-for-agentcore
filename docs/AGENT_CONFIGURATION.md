@@ -16,13 +16,16 @@ A basic conversational agent using the Strands framework with AgentCore Memory i
 
 - Multi-turn conversational chat
 - Maintains conversation history with short-term memory
-- Learns user preferences, facts, and creates summaries with long-term memory
 - Streams responses for better UX
 - Authenticated via Cognito (user identity tracked in memory)
 
-**Key Configuration File**: `basic_agent.py`
+**Key Configuration Files**:
+- **Agent Logic**: `patterns/strands-single-agent/basic_agent.py` - Main agent implementation with memory integration, model configuration, and streaming logic
+- **Python Dependencies**: `patterns/strands-single-agent/requirements.txt` - Required Python packages (Strands, bedrock-agentcore, etc.)
+- **Container Config**: `patterns/strands-single-agent/Dockerfile` - Docker container definition for AgentCore Runtime deployment
+- **Infrastructure**: `infra-cdk/lib/backend-stack.ts` - CDK configuration for memory resource and runtime deployment
 
-**Model Configuration**:
+**Model Configuration** (`patterns/strands-single-agent/basic_agent.py`):
 
 ```python
 bedrock_model = BedrockModel(
@@ -31,13 +34,13 @@ bedrock_model = BedrockModel(
 )
 ```
 
-**System Prompt**:
+**System Prompt** (`patterns/strands-single-agent/basic_agent.py`):
 
 ```python
 system_prompt = """You are a helpful assistant. Answer questions clearly and concisely."""
 ```
 
-**After making changes**: Redeploy with `cdk deploy` to rebuild the agent container.
+**After making changes**: See [Deployment Guide](DEPLOYMENT.md) for redeployment instructions.
 
 ### LangGraph Pattern (Coming Soon)
 
@@ -132,15 +135,4 @@ EnvironmentVariables: {
 
 ### Step 5: Deploy
 
-```bash
-cd infra-cdk
-cdk deploy
-```
-
-The CDK will automatically:
-
-- Build your Docker image
-- Push to ECR
-- Deploy to AgentCore Runtime
-
-For deployment details, see [Deployment Guide](DEPLOYMENT.md).
+See the [Deployment Guide](DEPLOYMENT.md) for complete deployment instructions.
