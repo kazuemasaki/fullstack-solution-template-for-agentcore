@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib"
-import { GaspCdkStack } from "../lib/gasp-cdk-stack"
+import { GaspMainStack } from "../lib/gasp-main-stack"
 import { ConfigManager } from "../lib/utils/config-manager"
 
 // Load configuration using ConfigManager
@@ -11,7 +11,8 @@ const props = configManager.getProps()
 
 const app = new cdk.App()
 
-const genaiidStack = new GaspCdkStack(app, props.stack_name_base, {
+// Deploy the new Amplify-based stack that solves the circular dependency
+const amplifyStack = new GaspMainStack(app, props.stack_name_base, {
   config: props,
   // If you don't specify 'env', this stack will be environment-agnostic.
   // Account/Region-dependent features and context lookups will not work,
