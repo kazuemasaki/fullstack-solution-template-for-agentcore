@@ -44,13 +44,6 @@ backend:
 
 ### 1. Install Dependencies
 
-Install frontend dependencies:
-```bash
-cd frontend
-npm install
-cd ..
-```
-
 Install infrastructure dependencies:
 ```bash
 cd infra-cdk
@@ -58,11 +51,13 @@ npm install
 cd ..
 ```
 
+**Note**: Frontend dependencies are automatically installed during deployment via Docker bundling, so no separate frontend `npm install` is required.
+
 ### 2. Bootstrap CDK (First Time Only)
 
 If this is your first time using CDK in this AWS account/region:
 ```bash
-cd infra
+cd infra-cdk
 npx cdk bootstrap
 ```
 
@@ -70,7 +65,7 @@ npx cdk bootstrap
 
 Build and deploy the complete stack:
 ```bash
-cd infra
+cd infra-cdk
 npm run build
 npx cdk deploy --all
 ```
