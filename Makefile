@@ -17,7 +17,7 @@ lint: ruff-lint format eslint
 
 # Run ESLint on frontend code
 eslint:
-	cd frontend && npx eslint src --ext js,jsx
+	cd frontend && npm run lint
 
 # Run linting checks and fix issues automatically
 ruff-lint:
