@@ -29,12 +29,18 @@ import time
 import argparse
 from typing import Tuple
 from datetime import datetime, UTC
+from pathlib import Path
 from botocore.exceptions import ClientError
 from colorama import Fore, Style
 import boto3
 
+# Add scripts directory to path for reliable imports
+script_dir = Path(__file__).parent
+if str(script_dir) not in sys.path:
+    sys.path.insert(0, str(script_dir))
+
 # Import shared utilities
-from test_utils import (
+from utils import (
     get_stack_config,
     create_bedrock_client,
     generate_session_id,

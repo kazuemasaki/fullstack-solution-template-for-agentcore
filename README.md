@@ -25,46 +25,39 @@ GASP comes deployable out-of-the-box with a fully functioning application. This 
 ### Architecture
 
 ![Architecture Diagram](docs/img/GASP-architecture-20251029.png)
-The out-of-the-box architecture is shown above.
+The out-of-the-box architecture is shown above. 
 
-### Tech stack
+### Tech Stack
 
 - **Frontend**: React with TypeScript, Vite build system, Cloudscape Design System
-- **Agent Providers**: Many agent providers are supported (Strands, langgraph, etc) (TODO) as a starting point. They all run within AgentCore Runtime.
-- **Authentication**: AWS Cognito User Pool with OAuth support
+- **Agent Providers**: Multiple agent providers supported (Strands, LangGraph, etc.) running within AgentCore Runtime
+- **Authentication**: AWS Cognito User Pool with OAuth support for easy swapping out Cognito
 - **Infrastructure**: CDK deployment with S3 static hosting, CloudFront distribution, and AgentCore
 - **Styling**: Dark/Light theme support
 
 ### Features
 
 #### Authentication
-
 - Cognito User Pool with email/username sign-in
 - OAuth support with authorization code flow
 - Secure password policy
 - Email verification
 
 #### Frontend
-
 - Cloudscape Design System components
 - Dark/Light theme toggle
 - Responsive design
 - SPA routing with React Router
 
 #### Infrastructure
-
 - S3 static website hosting
 - CloudFront CDN with HTTPS
 - Origin Access Control (OAC) for security
 - Automatic deployment pipeline
 
-## Agent Configuration
-
-GASP supports any containerized agent framework. See [Agent Configuration Guide](docs/AGENT_CONFIGURATION.md) for details on configuring models, behavior, and creating custom patterns.
-
 ## Deployment
 
-The GASP system is deployed with `cdk`. Please see the [deployment README](docs/DEPLOYMENT.md) for details on how to deploy GASP into an AWS account.
+The GASP system is deployed using AWS CDK. See the [deployment README](docs/DEPLOYMENT.md) for detailed instructions on how to deploy GASP into an AWS account.
 
 ## Project Structure
 
@@ -90,11 +83,12 @@ genaiid-agentcore-starter-pack/
 │       ├── basic_agent.py  # Agent implementation
 │       ├── requirements.txt # Agent dependencies
 │       └── Dockerfile      # Container configuration
-└── README.md
-│   ├── config.yaml         # Configuration
-│   └── requirements.txt
+├── docs/                   # Documentation
 └── README.md
 ```
+
+
+
 
 ## License
 
