@@ -36,6 +36,7 @@ export class GaspMainStack extends cdk.Stack {
       userPoolId: this.cognitoStack.userPoolId,
       userPoolClientId: this.cognitoStack.userPoolClientId,
       userPoolDomain: this.cognitoStack.userPoolDomain,
+      frontendUrl: this.amplifyHostingStack.amplifyUrl,
     })
 
     // Outputs
@@ -73,11 +74,6 @@ export class GaspMainStack extends cdk.Stack {
       value: this.backendStack.feedbackApiUrl,
       description: "Feedback API Gateway URL",
       exportName: `${props.config.stack_name_base}-FeedbackApiUrl`,
-    })
-
-    new cdk.CfnOutput(this, "DeploymentCommand", {
-      value: `cd frontend && STACK_NAME=${props.config.stack_name_base} ./bin/amplify-deploy.sh`,
-      description: "Command to deploy frontend manually",
     })
 
     new cdk.CfnOutput(this, "AmplifyConsoleUrl", {

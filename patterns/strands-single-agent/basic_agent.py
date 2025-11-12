@@ -16,7 +16,7 @@ app = BedrockAgentCoreApp()
 def get_ssm_parameter(parameter_name: str) -> str:
     """
     Fetch parameter from SSM Parameter Store.
-    
+
     SSM Parameter Store is AWS's service for storing configuration values securely.
     This function retrieves values like Gateway URLs that are set during deployment.
     """
@@ -28,19 +28,19 @@ def get_ssm_parameter(parameter_name: str) -> str:
 def create_gateway_mcp_client(access_token: str) -> MCPClient:
     """
     Create MCP client for AgentCore Gateway with OAuth2 authentication.
-    
+
     MCP (Model Context Protocol) is how agents communicate with tool providers.
     This creates a client that can talk to the AgentCore Gateway using the provided
     access token for authentication. The Gateway then provides access to Lambda-based tools.
     """
     stack_name = os.environ['STACK_NAME']
-    
+
     print(f"[AGENT] Creating Gateway MCP client for stack: {stack_name}")
-    
+
     # Fetch Gateway URL from SSM
     gateway_url = get_ssm_parameter(f'/{stack_name}/gateway_url')
     print(f"[AGENT] Gateway URL from SSM: {gateway_url}")
-    
+
     # Create MCP client with Bearer token authentication
     gateway_client = MCPClient(
         lambda: streamablehttp_client(
@@ -49,14 +49,14 @@ def create_gateway_mcp_client(access_token: str) -> MCPClient:
         ),
         prefix="gateway"
     )
-    
+
     print(f"[AGENT] Gateway MCP client created successfully")
     return gateway_client
 
 def create_basic_agent(user_id: str, session_id: str) -> Agent:
     """
     Create a basic agent with Gateway MCP tools and memory integration.
-    
+
     This function sets up an agent that can access tools through the AgentCore Gateway
     and maintains conversation memory. It handles authentication, creates the MCP client
     connection, and configures the agent with access to all tools available through
@@ -73,14 +73,14 @@ def create_basic_agent(user_id: str, session_id: str) -> Agent:
     memory_id = os.environ.get("MEMORY_ID")
     if not memory_id:
         raise ValueError("MEMORY_ID environment variable is required")
-    
+
     # Configure AgentCore Memory
     agentcore_memory_config = AgentCoreMemoryConfig(
         memory_id=memory_id,
         session_id=session_id,
         actor_id=user_id
     )
-    
+
     session_manager = AgentCoreMemorySessionManager(
         agentcore_memory_config=agentcore_memory_config,
         region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
@@ -88,17 +88,17 @@ def create_basic_agent(user_id: str, session_id: str) -> Agent:
 
     try:
         print("[AGENT] Starting agent creation with Gateway tools...")
-        
+
         # Get OAuth2 access token and create Gateway MCP client
         print("[AGENT] Step 1: Getting OAuth2 access token...")
         access_token = get_gateway_access_token()
         print(f"[AGENT] Got access token: {access_token[:20]}...")
-        
+
         # Create Gateway MCP client with authentication
         print("[AGENT] Step 2: Creating Gateway MCP client...")
         gateway_client = create_gateway_mcp_client(access_token)
         print("[AGENT] Gateway MCP client created successfully")
-        
+
         print("[AGENT] Step 2: Creating Agent with Gateway tools...")
         agent = Agent(
             name="BasicAgent",
@@ -113,7 +113,7 @@ def create_basic_agent(user_id: str, session_id: str) -> Agent:
         )
         print("[AGENT] Agent created successfully with Gateway tools")
         return agent
-        
+
     except Exception as e:
         print(f"[AGENT ERROR] Error creating Gateway client: {e}")
         print(f"[AGENT ERROR] Exception type: {type(e).__name__}")
@@ -126,7 +126,7 @@ def create_basic_agent(user_id: str, session_id: str) -> Agent:
 async def agent_stream(payload):
     """
     Main entrypoint for the agent using streaming with Gateway integration.
-    
+
     This is the function that AgentCore Runtime calls when the agent receives a request.
     It extracts the user's query from the payload, creates an agent with Gateway tools
     and memory, and streams the response back. This function handles the complete
@@ -135,24 +135,24 @@ async def agent_stream(payload):
     user_query = payload.get("prompt")
     user_id = payload.get("userId")
     session_id = payload.get("runtimeSessionId")
-    
+
     if not all([user_query, user_id, session_id]):
         yield {
             "status": "error",
             "error": "Missing required fields: prompt, userId, or runtimeSessionId"
         }
         return
-    
+
     try:
         print(f"[STREAM] Starting streaming invocation for user: {user_id}, session: {session_id}")
         print(f"[STREAM] Query: {user_query}")
-        
+
         agent = create_basic_agent(user_id, session_id)
-        
+
         # Use the agent's stream_async method for true token-level streaming
         async for event in agent.stream_async(user_query):
             yield event
-            
+
     except Exception as e:
         print(f"[STREAM ERROR] Error in agent_stream: {e}")
         traceback.print_exc()

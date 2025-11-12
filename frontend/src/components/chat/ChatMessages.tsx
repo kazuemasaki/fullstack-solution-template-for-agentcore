@@ -5,9 +5,20 @@ import { ChatMessage } from "./ChatMessage"
 interface ChatMessagesProps {
   messages: Message[]
   messagesEndRef: RefObject<HTMLDivElement | null>
+  sessionId: string
+  onFeedbackSubmit: (
+    messageContent: string,
+    feedbackType: "positive" | "negative",
+    comment: string
+  ) => Promise<void>
 }
 
-export function ChatMessages({ messages, messagesEndRef }: ChatMessagesProps) {
+export function ChatMessages({
+  messages,
+  messagesEndRef,
+  sessionId,
+  onFeedbackSubmit,
+}: ChatMessagesProps) {
   return (
     <div
       className={`h-full p-4 space-y-4 w-full ${
@@ -19,7 +30,16 @@ export function ChatMessages({ messages, messagesEndRef }: ChatMessagesProps) {
           Start a new conversation
         </div>
       ) : (
-        messages.map((message, index) => <ChatMessage key={index} message={message} />)
+        messages.map((message, index) => (
+          <ChatMessage
+            key={index}
+            message={message}
+            sessionId={sessionId}
+            onFeedbackSubmit={async (feedbackType, comment) => {
+              await onFeedbackSubmit(message.content, feedbackType, comment)
+            }}
+          />
+        ))
       )}
       <div ref={messagesEndRef} />
     </div>

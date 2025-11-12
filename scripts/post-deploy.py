@@ -53,7 +53,7 @@ def generate_aws_exports(stack_name):
             output_map[output['OutputKey']] = output['OutputValue']
 
         # Validate required outputs
-        required = ["CognitoClientId", "CognitoUserPoolId", "AmplifyUrl", "RuntimeArn"]
+        required = ["CognitoClientId", "CognitoUserPoolId", "AmplifyUrl", "RuntimeArn", "FeedbackApiUrl"]
         missing = [key for key in required if key not in output_map]
 
         if missing:
@@ -70,6 +70,7 @@ def generate_aws_exports(stack_name):
             "automaticSilentRenew": True,
             "agentRuntimeArn": output_map['RuntimeArn'],
             "awsRegion": region,
+            "feedbackApiUrl": output_map['FeedbackApiUrl'],
         }
 
         # Write to frontend/public directory
@@ -90,6 +91,7 @@ def generate_aws_exports(stack_name):
         print(f"   Authority: {aws_exports['authority']}")
         print(f"   Client ID: {aws_exports['client_id']}")
         print(f"   Redirect URI: {aws_exports['redirect_uri']}")
+        print(f"   Feedback API URL: {aws_exports['feedbackApiUrl']}")
 
     except subprocess.CalledProcessError as error:
         raise Exception(f"AWS CLI command failed: {error}")

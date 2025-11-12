@@ -65,6 +65,11 @@ get_cdk_outputs() {
         --query "Stacks[0].Outputs[?OutputKey=='StagingBucketName'].OutputValue" \
         --output text 2>/dev/null)
 
+    FEEDBACK_API_URL=$(aws cloudformation describe-stacks \
+        --stack-name "$STACK_NAME" \
+        --query "Stacks[0].Outputs[?OutputKey=='FeedbackApiUrl'].OutputValue" \
+        --output text 2>/dev/null)
+
     # Validate all required values
     if [ -z "$APP_ID" ] || [ "$APP_ID" = "None" ]; then
         log_error "Could not find Amplify App ID in stack outputs"
@@ -76,8 +81,14 @@ get_cdk_outputs() {
         exit 1
     fi
 
+    if [ -z "$FEEDBACK_API_URL" ] || [ "$FEEDBACK_API_URL" = "None" ]; then
+        log_error "Could not find Feedback API URL in stack outputs"
+        exit 1
+    fi
+
     log_success "✓ App ID: $APP_ID"
     log_success "✓ Staging Bucket: $DEPLOYMENT_BUCKET"
+    log_success "✓ Feedback API URL: $FEEDBACK_API_URL"
 }
 
 cleanup() {

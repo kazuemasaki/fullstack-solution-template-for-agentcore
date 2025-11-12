@@ -1,162 +1,133 @@
-"""
-Feedback API Lambda Handler
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
 
-CORS CONFIGURATION TODO:
+"""Feedback API Lambda Handler"""
 
-THE ISSUE - Bidirectional Dependency:
-- Frontend needs from Backend: Runtime ARN, Cognito config (via SSM)
-- Backend needs from Frontend: CloudFront URL (via frontendStack.distribution.distributionDomainName)
-
-CURRENT STATE:
-- ALLOWED_ORIGINS='*' allows any origin (Cognito JWT still protects endpoints)
-- This Lambda's ALLOWED_ORIGINS is the PRIMARY CORS control (API Gateway only handles OPTIONS)
-
-OPTIONS TO FIX:
-
-1. Custom Resource Post-Deployment Update:
-   - Custom resource = Lambda-backed CloudFormation resource that runs custom logic during stack lifecycle
-   - Flow: Frontend deploys → writes CloudFront URL to SSM → custom resource Lambda triggers
-   - Custom resource reads SSM, updates this Lambda's ALLOWED_ORIGINS via AWS SDK
-   - Pros: Automated, single deployment | Cons: Complex (~150 lines Lambda code)
-
-2. Two-Phase Deployment (Separate Stacks):
-   - Phase 1: Deploy Backend + Frontend independently
-   - Phase 2: Update Backend with CloudFront URL, redeploy
-   - Pros: Clean separation | Cons: Two deployment commands
-
-3. Accept Current State:
-   - Keep wildcard, rely on Cognito JWT as primary security
-   - Pros: No changes needed | Cons: Not security best practice
-
-See:
-- https://docs.aws.amazon.com/apigateway/latest/developerguide/how-to-cors.html
-- https://docs.aws.amazon.com/cdk/v2/guide/resources.html#resources-referencing
-"""
-
-import json
 import os
-import re
 import time
 import uuid
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 import boto3
+from aws_lambda_powertools import Logger, Tracer
+from aws_lambda_powertools.event_handler import APIGatewayRestResolver, CORSConfig
+from aws_lambda_powertools.logging.correlation_paths import API_GATEWAY_REST
+from aws_lambda_powertools.utilities.typing import LambdaContext
 from botocore.exceptions import ClientError
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic.alias_generators import to_camel
+
+# Environment variables
+TABLE_NAME = os.environ["TABLE_NAME"]
+CORS_ALLOWED_ORIGINS = os.environ.get("CORS_ALLOWED_ORIGINS", "*")
+
+# Parse CORS origins - can be comma-separated list
+cors_origins = [
+    origin.strip() for origin in CORS_ALLOWED_ORIGINS.split(",") if origin.strip()
+]
+primary_origin = cors_origins[0] if cors_origins else "*"
+extra_origins = cors_origins[1:] if len(cors_origins) > 1 else None
+
+# Configure CORS
+cors_config = CORSConfig(
+    allow_origin=primary_origin,
+    extra_origins=extra_origins,
+    allow_headers=["Content-Type", "Authorization"],
+    allow_credentials=True,
+)
 
 # Initialize DynamoDB client
 dynamodb = boto3.client("dynamodb")
 
-# Environment variables
-TABLE_NAME = os.environ["TABLE_NAME"]
-ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "")
+tracer = Tracer()
+logger = Logger()
+app = APIGatewayRestResolver(cors=cors_config)
 
 # Validation constants
 MAX_SESSION_ID_LENGTH = 100
 MAX_MESSAGE_LENGTH = 5000
-SESSION_ID_PATTERN = re.compile(r"^[a-zA-Z0-9-_]+$")
 
 
-def get_cors_headers() -> Dict[str, str]:
-    """Return CORS headers for API responses."""
-    return {
-        "Access-Control-Allow-Origin": ALLOWED_ORIGINS,
-        "Access-Control-Allow-Headers": "Content-Type,Authorization",
-        "Access-Control-Allow-Methods": "POST,OPTIONS",
-    }
-
-
-def create_response(status_code: int, body: Dict[str, Any]) -> Dict[str, Any]:
-    """Create a standardized API Gateway response."""
-    return {
-        "statusCode": status_code,
-        "headers": get_cors_headers(),
-        "body": json.dumps(body),
-    }
-
-
-def validate_feedback_request(body: Dict[str, Any]) -> Optional[str]:
+class FeedbackRequest(BaseModel):
     """
-    Validate the feedback request body.
+    Feedback request payload model.
 
-    Expected fields:
-    - sessionId: The conversation session identifier
-    - message: The agent's response that is receiving feedback (what the AI said)
-    - feedbackType: Either 'positive' or 'negative'
-    - comment (optional): User's explanation for their feedback rating
+    Accepts camelCase from client but uses snake_case internally.
+
+    Attributes:
+        session_id: The conversation session identifier
+        message: The agent's response that is receiving feedback (what the AI said)
+        feedback_type: Either 'positive' or 'negative'
+        comment: User's explanation for their feedback rating (optional)
+    """
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,  # Allows population by either snake_case or camelCase
+    )
+
+    session_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=MAX_SESSION_ID_LENGTH,
+        description="Conversation session identifier",
+    )
+    message: str = Field(
+        ...,
+        min_length=1,
+        max_length=MAX_MESSAGE_LENGTH,
+        description="Agent's response being rated",
+    )
+    feedback_type: Literal["positive", "negative"] = Field(
+        ..., description="User's rating of the response"
+    )
+    comment: Optional[str] = Field(
+        None,
+        max_length=MAX_MESSAGE_LENGTH,
+        description="User's explanation for their rating",
+    )
+
+    @field_validator("session_id")
+    @classmethod
+    def validate_session_id_format(cls, v: str) -> str:
+        """
+        Validate session_id contains only alphanumeric characters, hyphens, and underscores.
+
+        Args:
+            v: Session ID value to validate
+
+        Returns:
+            Validated session ID
+
+        Raises:
+            ValueError: If session ID contains invalid characters
+        """
+        if not v.replace("-", "").replace("_", "").isalnum():
+            raise ValueError(
+                "sessionId must contain only alphanumeric characters, hyphens, and underscores"
+            )
+        return v
+
+
+@app.post("/feedback")
+def submit_feedback() -> Dict[str, Any]:
+    """
+    Handle POST /feedback endpoint.
 
     Returns:
-        Error message if validation fails, None if valid.
-    """
-    # Check required fields
-    if (
-        not body.get("sessionId")
-        or not body.get("message")
-        or not body.get("feedbackType")
-    ):
-        return "sessionId, message, and feedbackType are required"
-
-    # Validate feedbackType value
-    if body["feedbackType"] not in ["positive", "negative"]:
-        return 'feedbackType must be either "positive" or "negative"'
-
-    # Validate sessionId format and length
-    session_id = body["sessionId"]
-    if len(session_id) > MAX_SESSION_ID_LENGTH or not SESSION_ID_PATTERN.match(
-        session_id
-    ):
-        return f"sessionId must be alphanumeric with hyphens/underscores and max {MAX_SESSION_ID_LENGTH} characters"
-
-    return None
-
-
-def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
-    """
-    Lambda handler for feedback API.
-
-    Args:
-        event: API Gateway event
-        context: Lambda context
-
-    Returns:
-        API Gateway response
+        Response with feedback ID on success
     """
     try:
-        # Handle OPTIONS request for CORS
-        if event.get("httpMethod") == "OPTIONS":
-            return create_response(200, {})
-
-        # Check for request body
-        if not event.get("body"):
-            return create_response(400, {"error": "Request body is required"})
-
-        # Parse request body
-        try:
-            body = json.loads(event["body"])
-        except json.JSONDecodeError:
-            return create_response(400, {"error": "Invalid JSON format"})
-
-        # Validate request
-        validation_error = validate_feedback_request(body)
-        if validation_error:
-            return create_response(400, {"error": validation_error})
-
-        # Truncate message (agent's response) if it exceeds max length
-        message = body["message"]
-        if len(message) > MAX_MESSAGE_LENGTH:
-            message = message[:MAX_MESSAGE_LENGTH]
-
-        # Get optional comment (user's feedback explanation)
-        comment = body.get("comment", "")
-        if comment and len(comment) > MAX_MESSAGE_LENGTH:
-            comment = comment[:MAX_MESSAGE_LENGTH]
+        # Parse and validate request body using Pydantic
+        feedback_data = FeedbackRequest(**app.current_event.json_body)
 
         # Extract user ID from Cognito claims
-        request_context = event.get("requestContext", {})
-        authorizer = request_context.get("authorizer", {})
-        claims = authorizer.get("claims", {})
+        request_context = app.current_event.request_context
+        authorizer = request_context.authorizer
+        claims = authorizer.get("claims", {}) if authorizer else {}
 
         if not claims:
-            return create_response(401, {"error": "Unauthorized"})
+            return {"error": "Unauthorized"}, 401
 
         user_id = claims.get("sub") or "unknown"
 
@@ -167,33 +138,49 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Save to DynamoDB
         item = {
             "feedbackId": {"S": feedback_id},
-            "sessionId": {"S": body["sessionId"]},
-            "message": {"S": message},  # Agent's response being rated
+            "sessionId": {"S": feedback_data.session_id},
+            "message": {"S": feedback_data.message},  # Agent's response being rated
             "userId": {"S": user_id},
-            "feedbackType": {"S": body["feedbackType"]},
+            "feedbackType": {"S": feedback_data.feedback_type},
             "timestamp": {"N": str(timestamp)},
         }
 
         # Add optional comment field if provided
-        if comment:
-            item["comment"] = {"S": comment}  # User's explanation for their rating
+        if feedback_data.comment:
+            item["comment"] = {
+                "S": feedback_data.comment
+            }  # User's explanation for their rating
 
         dynamodb.put_item(TableName=TABLE_NAME, Item=item)
 
-        return create_response(
-            200,
-            {
-                "success": True,
-                "feedbackId": feedback_id,
-            },
-        )
+        return {
+            "success": True,
+            "feedbackId": feedback_id,
+        }
+
+    except ValueError as e:
+        logger.warning(f"Validation error: {str(e)}")
+        return {"error": str(e)}, 400
 
     except ClientError as e:
-        print(f"DynamoDB error: {e.response['Error']['Message']}")
-        print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}")
-        return create_response(500, {"error": "Internal server error"})
+        logger.error(f"DynamoDB error: {e.response['Error']['Message']}")
+        return {"error": "Internal server error"}, 500
 
     except Exception as e:
-        print(f"Error saving feedback: {str(e)}")
-        print(f"Timestamp: {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}")
-        return create_response(500, {"error": "Internal server error"})
+        logger.error(f"Error saving feedback: {str(e)}")
+        return {"error": "Internal server error"}, 500
+
+
+@logger.inject_lambda_context(correlation_id_path=API_GATEWAY_REST)
+def handler(event: dict, context: LambdaContext) -> dict:
+    """
+    Lambda handler for feedback API.
+
+    Args:
+        event: API Gateway event
+        context: Lambda context
+
+    Returns:
+        API Gateway response
+    """
+    return app.resolve(event, context)

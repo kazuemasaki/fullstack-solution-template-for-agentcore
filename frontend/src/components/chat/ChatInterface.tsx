@@ -7,11 +7,8 @@ import { ChatMessages } from "./ChatMessages"
 import { Message } from "./types"
 
 import { useGlobal } from "@/app/context/GlobalContext"
-import {
-  invokeAgentCore,
-  generateSessionId,
-  setAgentConfig,
-} from "@/services/agentCoreService"
+import { invokeAgentCore, generateSessionId, setAgentConfig } from "@/services/agentCoreService"
+import { submitFeedback } from "@/services/feedbackService"
 import { useAuth } from "react-oidc-context"
 
 export default function ChatInterface() {
@@ -36,11 +33,11 @@ export default function ChatInterface() {
           throw new Error("Failed to load configuration")
         }
         const config = await response.json()
-        
+
         if (!config.agentRuntimeArn) {
           throw new Error("Agent Runtime ARN not found in configuration")
         }
-        
+
         setAgentConfig(config.agentRuntimeArn, config.awsRegion || "us-east-1")
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Unknown error"
@@ -48,7 +45,7 @@ export default function ChatInterface() {
         console.error("Failed to load agent configuration:", err)
       }
     }
-    
+
     loadConfig()
   }, [])
 
@@ -119,13 +116,14 @@ export default function ChatInterface() {
       const errorMessage = err instanceof Error ? err.message : "Unknown error"
       setError(`Failed to get response: ${errorMessage}`)
       console.error("Error invoking AgentCore:", err)
-      
+
       // Update the assistant message with error
       setMessages((prev) => {
         const updated = [...prev]
         updated[updated.length - 1] = {
           ...updated[updated.length - 1],
-          content: "I apologize, but I encountered an error processing your request. Please try again.",
+          content:
+            "I apologize, but I encountered an error processing your request. Please try again.",
         }
         return updated
       })
@@ -139,6 +137,38 @@ export default function ChatInterface() {
     e.preventDefault()
 
     sendMessage(input)
+  }
+
+  // Handle feedback submission
+  const handleFeedbackSubmit = async (
+    messageContent: string,
+    feedbackType: "positive" | "negative",
+    comment: string
+  ) => {
+    try {
+      // Use ID token for API Gateway Cognito authorizer (not access token)
+      const idToken = auth.user?.id_token
+
+      if (!idToken) {
+        throw new Error("Authentication required. Please log in again.")
+      }
+
+      await submitFeedback(
+        {
+          sessionId,
+          message: messageContent,
+          feedbackType,
+          comment: comment || undefined,
+        },
+        idToken
+      )
+
+      console.log("Feedback submitted successfully")
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error"
+      console.error("Error submitting feedback:", err)
+      setError(`Failed to submit feedback: ${errorMessage}`)
+    }
   }
 
   // Start a new chat (generates new session ID)
@@ -200,7 +230,12 @@ export default function ChatInterface() {
           {/* Scrollable message area */}
           <div className="grow overflow-hidden">
             <div className="max-w-4xl mx-auto w-full h-full">
-              <ChatMessages messages={messages} messagesEndRef={messagesEndRef} />
+              <ChatMessages
+                messages={messages}
+                messagesEndRef={messagesEndRef}
+                sessionId={sessionId}
+                onFeedbackSubmit={handleFeedbackSubmit}
+              />
             </div>
           </div>
 
