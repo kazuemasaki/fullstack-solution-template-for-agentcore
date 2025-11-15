@@ -39,26 +39,25 @@ dev = [
     "mypy>=1.0.0",
 ]
 
-# Agent dependencies (for local development)
-# Includes both Strands and LangGraph agent dependencies
-agent = [
-    # Strands agent
+# Strands agent dependencies (for local development)
+agent-strands = [
     "strands-agents==1.16.0",
     "bedrock-agentcore[strands-agents]==1.0.6",
-    
-    # LangGraph agent
+    "mcp==1.21.0",
+]
+
+# LangGraph agent dependencies (for local development)
+agent-langgraph = [
     "langgraph==1.0.3",
     "langchain-aws==1.0.0",
     "langchain-mcp-adapters==0.1.13",
     "langgraph-checkpoint-aws==1.0.1",
-    
-    # Shared
     "mcp==1.21.0",
 ]
 
 # All dependencies for local development
 all = [
-    "genaiid-agentcore-starter-pack[dev,agent]"
+    "genaiid-agentcore-starter-pack[dev,agent-strands,agent-langgraph]"
 ]
 
 [project.urls]
