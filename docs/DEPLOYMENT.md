@@ -228,15 +228,15 @@ uname -m
 
 If the output is `x86_64` (not `aarch64` or `arm64`), run these commands:
 
-1. **Enable Docker buildx and create a multi-platform builder:**
+1. **Install QEMU for ARM64 emulation:**
+   ```bash
+   docker run --privileged --rm tonistiigi/binfmt --install all
+   ```
+
+2. **Enable Docker buildx and create a multi-platform builder:**
    ```bash
    docker buildx create --use --name multiarch --driver docker-container
    docker buildx inspect --bootstrap
-   ```
-
-2. **Install QEMU for ARM64 emulation:**
-   ```bash
-   docker run --privileged --rm tonistiigi/binfmt --install all
    ```
 
 3. **Verify ARM64 support is available:**
