@@ -62,6 +62,25 @@ export class AmplifyHostingStack extends cdk.NestedStack {
       })
     )
 
+    // Enforce SSL/TLS for all requests to the bucket
+    this.stagingBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: "DenyInsecureConnections",
+        effect: iam.Effect.DENY,
+        principals: [new iam.AnyPrincipal()],
+        actions: ["s3:*"],
+        resources: [
+          this.stagingBucket.bucketArn,
+          this.stagingBucket.arnForObjects("*"),
+        ],
+        conditions: {
+          Bool: {
+            "aws:SecureTransport": "false",
+          },
+        },
+      })
+    )
+
     // Create the Amplify app
     this.amplifyApp = new amplify.App(this, "AmplifyApp", {
       appName: `${props.config.stack_name_base}-frontend`,
