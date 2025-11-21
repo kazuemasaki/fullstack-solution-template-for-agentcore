@@ -32,13 +32,37 @@ def get_secret(secret_name: str) -> str:
     
     Secrets Manager is designed for storing sensitive information like passwords,
     API keys, and other secrets with automatic rotation capabilities.
+    
+    Args:
+        secret_name: The name or ARN of the secret to retrieve
+        
+    Returns:
+        The secret value as a string
+        
+    Raises:
+        ValueError: If the secret is not found or cannot be accessed
+        RuntimeError: If there's an AWS service error
     """
     region = os.environ.get(
         "AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
     )
     secrets_client = boto3.client("secretsmanager", region_name=region)
-    response = secrets_client.get_secret_value(SecretId=secret_name)
-    return response["SecretString"]
+    
+    try:
+        response = secrets_client.get_secret_value(SecretId=secret_name)
+        return response["SecretString"]
+    except secrets_client.exceptions.ResourceNotFoundException:
+        raise ValueError(f"Secret not found: {secret_name}")
+    except secrets_client.exceptions.InvalidParameterException:
+        raise ValueError(f"Invalid secret parameter: {secret_name}")
+    except secrets_client.exceptions.InvalidRequestException:
+        raise ValueError(f"Invalid request for secret: {secret_name}")
+    except secrets_client.exceptions.DecryptionFailureException:
+        raise RuntimeError(f"Failed to decrypt secret: {secret_name}")
+    except secrets_client.exceptions.InternalServiceErrorException:
+        raise RuntimeError(f"AWS Secrets Manager service error for secret: {secret_name}")
+    except Exception as e:
+        raise RuntimeError(f"Unexpected error retrieving secret {secret_name}: {str(e)}")
 
 
 def fetch_access_token(client_id: str, client_secret: str, token_url: str) -> str:
