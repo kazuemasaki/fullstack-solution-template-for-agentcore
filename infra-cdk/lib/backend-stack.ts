@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib"
 import * as cognito from "aws-cdk-lib/aws-cognito"
 import * as iam from "aws-cdk-lib/aws-iam"
 import * as ssm from "aws-cdk-lib/aws-ssm"
+import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager"
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb"
 import * as apigateway from "aws-cdk-lib/aws-apigateway"
 import * as logs from "aws-cdk-lib/aws-logs"
@@ -261,9 +262,9 @@ export class BackendStack extends cdk.NestedStack {
       description: "Machine Client ID for M2M authentication",
     })
 
-    new ssm.StringParameter(this, "MachineClientSecretParam", {
-      parameterName: `/${config.stack_name_base}/machine_client_secret`,
-      stringValue: this.machineClient.userPoolClientSecret.unsafeUnwrap(),
+    new secretsmanager.Secret(this, "MachineClientSecret", {
+      secretName: `/${config.stack_name_base}/machine_client_secret`,
+      secretStringValue: cdk.SecretValue.unsafePlainText(this.machineClient.userPoolClientSecret.unsafeUnwrap()),
       description: "Machine Client Secret for M2M authentication",
     })
 
@@ -285,6 +286,10 @@ export class BackendStack extends cdk.NestedStack {
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
+      encryption: dynamodb.TableEncryption.AWS_MANAGED,
     })
 
     // Add GSI for querying by feedbackType with timestamp sorting
@@ -380,7 +385,31 @@ export class BackendStack extends cdk.NestedStack {
         stageName: "prod",
         throttlingRateLimit: 100,
         throttlingBurstLimit: 200,
+        cachingEnabled: true,
+        cacheClusterEnabled: true,
+        cacheClusterSize: "0.5",
+        cacheTtl: cdk.Duration.minutes(5),
+        loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        dataTraceEnabled: true,
+        metricsEnabled: true,
+        accessLogDestination: new apigateway.LogGroupLogDestination(
+          new logs.LogGroup(this, "FeedbackApiAccessLogGroup", {
+            logGroupName: `/aws/apigateway/${config.stack_name_base}-api-access`,
+            retention: logs.RetentionDays.ONE_WEEK,
+            removalPolicy: cdk.RemovalPolicy.DESTROY,
+          })
+        ),
+        accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields(),
+        tracingEnabled: true,
       },
+    })
+
+    // Add request validator for API security
+    const requestValidator = new apigateway.RequestValidator(this, "FeedbackApiRequestValidator", {
+      restApi: api,
+      requestValidatorName: `${config.stack_name_base}-request-validator`,
+      validateRequestBody: true,
+      validateRequestParameters: true,
     })
 
     // Create Cognito authorizer
@@ -395,6 +424,7 @@ export class BackendStack extends cdk.NestedStack {
     feedbackResource.addMethod("POST", new apigateway.LambdaIntegration(feedbackLambda), {
       authorizer,
       authorizationType: apigateway.AuthorizationType.COGNITO,
+      requestValidator: requestValidator,
     })
 
     // Store the API URL for access from main stack
@@ -415,6 +445,11 @@ export class BackendStack extends cdk.NestedStack {
       handler: "sample_tool_lambda.handler",
       code: lambda.Code.fromAsset(path.join(__dirname, "../../gateway/tools/sample_tool")),
       timeout: cdk.Duration.seconds(30),
+      logGroup: new logs.LogGroup(this, "SampleToolLambdaLogGroup", {
+        logGroupName: `/aws/lambda/${config.stack_name_base}-sample-tool`,
+        retention: logs.RetentionDays.ONE_WEEK,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
     })
 
     // Create comprehensive IAM role for gateway

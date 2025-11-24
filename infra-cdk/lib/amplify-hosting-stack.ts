@@ -18,6 +18,21 @@ export class AmplifyHostingStack extends cdk.NestedStack {
     const description = "GenAIID AgentCore Starter Pack - Amplify Hosting Stack"
     super(scope, id, { ...props, description })
 
+    // Create access logs bucket for staging bucket
+    const accessLogsBucket = new s3.Bucket(this, "StagingBucketAccessLogs", {
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
+      publicReadAccess: false,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      lifecycleRules: [
+        {
+          id: "DeleteOldAccessLogs",
+          enabled: true,
+          expiration: cdk.Duration.days(90), // Keep access logs for 90 days
+        },
+      ],
+    })
+
     // Create staging bucket for Amplify deployments with dynamic name
     this.stagingBucket = new s3.Bucket(this, "StagingBucket", {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -25,6 +40,8 @@ export class AmplifyHostingStack extends cdk.NestedStack {
       versioned: true, // Enable versioning as required by Amplify
       publicReadAccess: false,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      serverAccessLogsBucket: accessLogsBucket,
+      serverAccessLogsPrefix: "staging-bucket-access-logs/",
       lifecycleRules: [
         {
           id: "DeleteOldDeployments",
@@ -42,6 +59,25 @@ export class AmplifyHostingStack extends cdk.NestedStack {
         principals: [new iam.ServicePrincipal("amplify.amazonaws.com")],
         actions: ["s3:GetObject", "s3:GetObjectVersion"],
         resources: [this.stagingBucket.arnForObjects("*")],
+      })
+    )
+
+    // Enforce SSL/TLS for all requests to the bucket
+    this.stagingBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        sid: "DenyInsecureConnections",
+        effect: iam.Effect.DENY,
+        principals: [new iam.AnyPrincipal()],
+        actions: ["s3:*"],
+        resources: [
+          this.stagingBucket.bucketArn,
+          this.stagingBucket.arnForObjects("*"),
+        ],
+        conditions: {
+          Bool: {
+            "aws:SecureTransport": "false",
+          },
+        },
       })
     )
 

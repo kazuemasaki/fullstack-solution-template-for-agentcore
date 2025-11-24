@@ -26,6 +26,49 @@ def get_ssm_parameter(parameter_name: str) -> str:
     return response["Parameter"]["Value"]
 
 
+def get_secret(secret_name: str) -> str:
+    """
+    Fetch secret from AWS Secrets Manager.
+
+    Secrets Manager is designed for storing sensitive information like passwords,
+    API keys, and other secrets with automatic rotation capabilities.
+
+    Args:
+        secret_name: The name or ARN of the secret to retrieve
+
+    Returns:
+        The secret value as a string
+
+    Raises:
+        ValueError: If the secret is not found or cannot be accessed
+        RuntimeError: If there's an AWS service error
+    """
+    region = os.environ.get(
+        "AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+    )
+    secrets_client = boto3.client("secretsmanager", region_name=region)
+
+    try:
+        response = secrets_client.get_secret_value(SecretId=secret_name)
+        return response["SecretString"]
+    except secrets_client.exceptions.ResourceNotFoundException:
+        raise ValueError(f"Secret not found: {secret_name}")
+    except secrets_client.exceptions.InvalidParameterException:
+        raise ValueError(f"Invalid secret parameter: {secret_name}")
+    except secrets_client.exceptions.InvalidRequestException:
+        raise ValueError(f"Invalid request for secret: {secret_name}")
+    except secrets_client.exceptions.DecryptionFailureException:
+        raise RuntimeError(f"Failed to decrypt secret: {secret_name}")
+    except secrets_client.exceptions.InternalServiceErrorException:
+        raise RuntimeError(
+            f"AWS Secrets Manager service error for secret: {secret_name}"
+        )
+    except Exception as e:
+        raise RuntimeError(
+            f"Unexpected error retrieving secret {secret_name}: {str(e)}"
+        )
+
+
 def get_gateway_access_token() -> str:
     """
     Get OAuth2 access token using client credentials flow.
@@ -44,10 +87,10 @@ def get_gateway_access_token() -> str:
 
     print(f"[AUTH] Getting access token for stack: {stack_name}, region: {region}")
 
-    # Get Cognito configuration from SSM
+    # Get Cognito configuration from SSM and Secrets Manager
     cognito_domain = get_ssm_parameter(f"/{stack_name}/cognito_provider")
     client_id = get_ssm_parameter(f"/{stack_name}/machine_client_id")
-    client_secret = get_ssm_parameter(f"/{stack_name}/machine_client_secret")
+    client_secret = get_secret(f"/{stack_name}/machine_client_secret")
 
     print(f"[AUTH] Cognito domain: {cognito_domain}")
     print(f"[AUTH] Client ID: {client_id[:10]}...")
