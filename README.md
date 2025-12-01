@@ -8,9 +8,19 @@ With GASP as a starting point and development framework, delivery scientists and
 
 ## GASP Baseline System
 
-GASP comes deployable out-of-the-box with a fully functioning, full-stack application. This application represents starts as a basic multi-turn chat agent where the backend agent has access to some basic tools. **Do not let this deter you, even if your use case is entirely different! If your application requires AgentCore, customizing GASP to any use case is extremely straightforward. That is the intended use of GASP!**
+GASP comes deployable out-of-the-box with a fully functioning, full-stack application. This application represents starts as a basic multi-turn chat agent where the backend agent has access to tools. **Do not let this deter you, even if your use case is entirely different! If your application requires AgentCore, customizing GASP to any use case is extremely straightforward. That is the intended use of GASP!**
 
-The application is intentionally kept very, very simple to allow developers to easily build up whatever they want on top of the baseline. The tools shipped out of the box are implemented as lambda endpoints behind an AgentCore Gateway with authentication. One such tool is the "text analysis" tool which counts number of words and frequency of letters in a block of text. Try asking the agent to analyze a block of text and see what comes out.
+The application is intentionally kept very, very simple to allow developers to easily build up whatever they want on top of the baseline. The tools shipped out of the box include:
+
+1. **Gateway Tools** - Lambda-based tools behind AgentCore Gateway with authentication:
+   - Text analysis tool (counts words and letter frequency)
+   
+2. **Code Interpreter** - Direct integration with Amazon Bedrock AgentCore Code Interpreter:
+   - Secure Python code execution in isolated sandbox
+   - Session management with state persistence
+   - Pre-built runtime with common libraries
+
+Try asking the agent to analyze text or execute Python code to see these tools in action.
 
 
 ## GASP User Setup
@@ -37,7 +47,7 @@ What comes next? That's up to you, the developer. With your requirements in mind
 
 ## Architecture
 
-![Architecture Diagram](docs/architecture-diagram/GASP-architecture-20251113.png)
+![Architecture Diagram](docs/architecture-diagram/GASP-architecture-20251201.png)
 
 The out-of-the-box architecture is shown above. Note that Amazon Cognito is used in four places:
 1. User-based login to the frontend web application on CloudFront
@@ -75,8 +85,15 @@ genaiid-agentcore-starter-pack/
 ├── patterns/               # Agent pattern implementations
 │   └── strands-single-agent/ # Basic strands agent pattern
 │       ├── basic_agent.py  # Agent implementation
+│       ├── strands_code_interpreter.py # Code Interpreter wrapper
 │       ├── requirements.txt # Agent dependencies
 │       └── Dockerfile      # Container configuration
+├── tools/                  # Reusable tools (framework-agnostic)
+│   └── code_interpreter/   # AgentCore Code Interpreter integration
+│       └── code_interpreter_tools.py # Core implementation
+├── gateway/                # Gateway utilities and tools
+│   ├── tools/              # Gateway tool implementations
+│   └── utils/              # Gateway utility functions
 ├── scripts/                # Deployment and test scripts
 │   ├── deploy-frontend.sh  # Frontend deployment helper
 │   ├── post-deploy.py      # Configuration generation
@@ -86,10 +103,8 @@ genaiid-agentcore-starter-pack/
 │   ├── AGENT_CONFIGURATION.md # Agent setup guide
 │   ├── MEMORY_INTEGRATION.md # Memory integration guide
 │   ├── GATEWAY.md          # Gateway integration guide
-│   └── STREAMING.md        # Streaming implementation guide
-├── gateway/                # Gateway utilities and tools
-│   ├── tools/              # Gateway tool implementations
-│   └── utils/              # Gateway utility functions
+│   ├── STREAMING.md        # Streaming implementation guide
+│   └── TOOL_AC_CODE_INTERPRETER.md # Code Interpreter integration guide
 ├── tests/                  # Test suite
 ├── vibe-context/           # AI coding assistant context
 └── README.md

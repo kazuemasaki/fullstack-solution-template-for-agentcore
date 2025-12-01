@@ -187,6 +187,20 @@ export class BackendStack extends cdk.NestedStack {
       })
     )
 
+    // Add Code Interpreter permissions
+    agentRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: "CodeInterpreterAccess",
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "bedrock-agentcore:StartCodeInterpreterSession",
+          "bedrock-agentcore:StopCodeInterpreterSession",
+          "bedrock-agentcore:InvokeCodeInterpreter",
+        ],
+        resources: [`arn:aws:bedrock-agentcore:${this.region}:aws:code-interpreter/*`],
+      })
+    )
+
     // Environment variables for the runtime
     const envVars: { [key: string]: string } = {
       AWS_REGION: stack.region,

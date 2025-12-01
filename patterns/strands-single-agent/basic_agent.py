@@ -1,17 +1,21 @@
-from strands import Agent
-from strands.tools.mcp import MCPClient
-from strands.models import BedrockModel
-from mcp.client.streamable_http import streamablehttp_client
 import os
-import boto3
-from bedrock_agentcore.runtime import BedrockAgentCoreApp
-from bedrock_agentcore.memory.integrations.strands.session_manager import AgentCoreMemorySessionManager
-from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
 import traceback
 
+import boto3
+from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
+from bedrock_agentcore.memory.integrations.strands.session_manager import (
+    AgentCoreMemorySessionManager,
+)
+from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from gateway.utils.gateway_access_token import get_gateway_access_token
+from mcp.client.streamable_http import streamablehttp_client
+from strands import Agent
+from strands.models import BedrockModel
+from strands.tools.mcp import MCPClient
+from strands_code_interpreter import StrandsCodeInterpreterTools
 
 app = BedrockAgentCoreApp()
+
 
 def get_ssm_parameter(parameter_name: str) -> str:
     """
@@ -20,15 +24,18 @@ def get_ssm_parameter(parameter_name: str) -> str:
     SSM Parameter Store is AWS's service for storing configuration values securely.
     This function retrieves values like Gateway URLs that are set during deployment.
     """
-    region = os.environ.get('AWS_REGION', os.environ.get('AWS_DEFAULT_REGION', 'us-east-1'))
-    ssm = boto3.client('ssm', region_name=region)
+    region = os.environ.get(
+        "AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+    )
+    ssm = boto3.client("ssm", region_name=region)
     try:
         response = ssm.get_parameter(Name=parameter_name)
-        return response['Parameter']['Value']
+        return response["Parameter"]["Value"]
     except ssm.exceptions.ParameterNotFound:
         raise ValueError(f"SSM parameter not found: {parameter_name}")
     except Exception as e:
         raise ValueError(f"Failed to retrieve SSM parameter {parameter_name}: {e}")
+
 
 def create_gateway_mcp_client(access_token: str) -> MCPClient:
     """
@@ -38,31 +45,31 @@ def create_gateway_mcp_client(access_token: str) -> MCPClient:
     This creates a client that can talk to the AgentCore Gateway using the provided
     access token for authentication. The Gateway then provides access to Lambda-based tools.
     """
-    stack_name = os.environ.get('STACK_NAME')
+    stack_name = os.environ.get("STACK_NAME")
     if not stack_name:
         raise ValueError("STACK_NAME environment variable is required")
-    
+
     # Validate stack name format to prevent injection
-    if not stack_name.replace('-', '').replace('_', '').isalnum():
+    if not stack_name.replace("-", "").replace("_", "").isalnum():
         raise ValueError("Invalid STACK_NAME format")
 
     print(f"[AGENT] Creating Gateway MCP client for stack: {stack_name}")
 
     # Fetch Gateway URL from SSM
-    gateway_url = get_ssm_parameter(f'/{stack_name}/gateway_url')
+    gateway_url = get_ssm_parameter(f"/{stack_name}/gateway_url")
     print(f"[AGENT] Gateway URL from SSM: {gateway_url}")
 
     # Create MCP client with Bearer token authentication
     gateway_client = MCPClient(
         lambda: streamablehttp_client(
-            url=gateway_url,
-            headers={"Authorization": f"Bearer {access_token}"}
+            url=gateway_url, headers={"Authorization": f"Bearer {access_token}"}
         ),
-        prefix="gateway"
+        prefix="gateway",
     )
 
-    print(f"[AGENT] Gateway MCP client created successfully")
+    print("[AGENT] Gateway MCP client created successfully")
     return gateway_client
+
 
 def create_basic_agent(user_id: str, session_id: str) -> Agent:
     """
@@ -73,12 +80,11 @@ def create_basic_agent(user_id: str, session_id: str) -> Agent:
     connection, and configures the agent with access to all tools available through
     the Gateway. If Gateway connection fails, it falls back to an agent without tools.
     """
-    system_prompt = """You are a helpful assistant with access to tools via the Gateway.
+    system_prompt = """You are a helpful assistant with access to tools via the Gateway and Code Interpreter.
     When asked about your tools, list them and explain what they do."""
 
     bedrock_model = BedrockModel(
-        model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
-        temperature=0.1
+        model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0", temperature=0.1
     )
 
     memory_id = os.environ.get("MEMORY_ID")
@@ -87,15 +93,18 @@ def create_basic_agent(user_id: str, session_id: str) -> Agent:
 
     # Configure AgentCore Memory
     agentcore_memory_config = AgentCoreMemoryConfig(
-        memory_id=memory_id,
-        session_id=session_id,
-        actor_id=user_id
+        memory_id=memory_id, session_id=session_id, actor_id=user_id
     )
 
     session_manager = AgentCoreMemorySessionManager(
         agentcore_memory_config=agentcore_memory_config,
-        region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+        region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
     )
+
+    # Initialize Code Interpreter tools with boto3 session
+    region = os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
+    session = boto3.Session(region_name=region)
+    code_tools = StrandsCodeInterpreterTools(region)
 
     try:
         print("[AGENT] Starting agent creation with Gateway tools...")
@@ -110,28 +119,35 @@ def create_basic_agent(user_id: str, session_id: str) -> Agent:
         gateway_client = create_gateway_mcp_client(access_token)
         print("[AGENT] Gateway MCP client created successfully")
 
-        print("[AGENT] Step 2: Creating Agent with Gateway tools...")
+        print(
+            "[AGENT] Step 3: Creating Agent with Gateway tools and Code Interpreter..."
+        )
         agent = Agent(
             name="BasicAgent",
             system_prompt=system_prompt,
-            tools=[gateway_client],
+            tools=[gateway_client, code_tools.execute_python_securely],
             model=bedrock_model,
             session_manager=session_manager,
             trace_attributes={
                 "user.id": user_id,
                 "session.id": session_id,
-            }
+            },
         )
-        print("[AGENT] Agent created successfully with Gateway tools")
+        print(
+            "[AGENT] Agent created successfully with Gateway tools and Code Interpreter"
+        )
         return agent
 
     except Exception as e:
         print(f"[AGENT ERROR] Error creating Gateway client: {e}")
         print(f"[AGENT ERROR] Exception type: {type(e).__name__}")
-        print(f"[AGENT ERROR] Traceback:")
+        print("[AGENT ERROR] Traceback:")
         traceback.print_exc()
-        print("[AGENT] Gateway connection failed - raising exception instead of fallback")
+        print(
+            "[AGENT] Gateway connection failed - raising exception instead of fallback"
+        )
         raise
+
 
 @app.entrypoint
 async def agent_stream(payload):
@@ -150,12 +166,14 @@ async def agent_stream(payload):
     if not all([user_query, user_id, session_id]):
         yield {
             "status": "error",
-            "error": "Missing required fields: prompt, userId, or runtimeSessionId"
+            "error": "Missing required fields: prompt, userId, or runtimeSessionId",
         }
         return
 
     try:
-        print(f"[STREAM] Starting streaming invocation for user: {user_id}, session: {session_id}")
+        print(
+            f"[STREAM] Starting streaming invocation for user: {user_id}, session: {session_id}"
+        )
         print(f"[STREAM] Query: {user_query}")
 
         agent = create_basic_agent(user_id, session_id)
@@ -167,10 +185,8 @@ async def agent_stream(payload):
     except Exception as e:
         print(f"[STREAM ERROR] Error in agent_stream: {e}")
         traceback.print_exc()
-        yield {
-            "status": "error",
-            "error": str(e)
-        }
+        yield {"status": "error", "error": str(e)}
+
 
 if __name__ == "__main__":
     app.run()
