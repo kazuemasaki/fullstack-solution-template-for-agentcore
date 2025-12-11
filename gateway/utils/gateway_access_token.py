@@ -80,7 +80,7 @@ def get_gateway_access_token() -> str:
     Returns:
         Valid OAuth2 access token for Gateway authentication
     """
-    stack_name = os.environ.get("STACK_NAME", "gasp-2-1")
+    stack_name = os.environ["STACK_NAME"]
     region = os.environ.get(
         "AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")
     )

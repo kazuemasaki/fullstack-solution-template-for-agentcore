@@ -10,7 +10,7 @@ ENV UV_SYSTEM_PYTHON=1 \
     UV_COMPILE_BYTECODE=1 \
     DOCKER_CONTAINER=1
 
-# Copy pyproject.toml and gateway package for GASP installation
+# Copy pyproject.toml and gateway package for FAST installation
 COPY pyproject.toml .
 COPY gateway/ gateway/
 
@@ -19,7 +19,7 @@ COPY patterns/langgraph-single-agent/requirements.txt requirements.txt
 RUN uv pip install --no-cache -r requirements.txt && \
     uv pip install --no-cache aws-opentelemetry-distro==0.10.1
 
-# Install GASP package with only core dependencies (no dev/agent optional deps)
+# Install FAST package with only core dependencies (no dev/agent optional deps)
 RUN uv pip install --no-cache -e . --no-deps && \
     uv pip install --no-cache requests>=2.31.0
 

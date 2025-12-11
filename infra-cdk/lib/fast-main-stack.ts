@@ -7,17 +7,17 @@ import { BackendStack } from "./backend-stack"
 import { AmplifyHostingStack } from "./amplify-hosting-stack"
 import { CognitoStack } from "./cognito-stack"
 
-export interface GaspAmplifyStackProps extends cdk.StackProps {
+export interface FastAmplifyStackProps extends cdk.StackProps {
   config: AppConfig
 }
 
-export class GaspMainStack extends cdk.Stack {
+export class FastMainStack extends cdk.Stack {
   public readonly amplifyHostingStack: AmplifyHostingStack
   public readonly backendStack: BackendStack
   public readonly cognitoStack: CognitoStack
 
-  constructor(scope: Construct, id: string, props: GaspAmplifyStackProps) {
-    const description = "GenAIID AgentCore Starter Pack - Main Stack (v0.1.2) (uksb-v6dos0t5g8)"
+  constructor(scope: Construct, id: string, props: FastAmplifyStackProps) {
+    const description = "Fullstack AgentCore Solution Template - Main Stack (v0.1.3) (uksb-v6dos0t5g8)"
     super(scope, id, { ...props, description })
 
     // Step 1: Create the Amplify stack to get the predictable domain

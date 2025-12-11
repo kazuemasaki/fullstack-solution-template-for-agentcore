@@ -113,7 +113,7 @@ export class BackendStack extends cdk.NestedStack {
     // Create the agent runtime artifact from local Docker context with ARM64 platform
     //
     // DOCKER BUILD CONTEXT STRATEGY:
-    // Use repository root as build context to install GASP package, but with optimized
+    // Use repository root as build context to install FAST package, but with optimized
     // Dockerfile that installs the package and only copies necessary agent files.
     const agentRuntimeArtifact = agentcore.AgentRuntimeArtifact.fromAsset(
       path.resolve(__dirname, "..", ".."),

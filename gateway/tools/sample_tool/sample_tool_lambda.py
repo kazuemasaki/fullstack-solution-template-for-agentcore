@@ -39,7 +39,7 @@ def analyze_text(text: str, n: int = 5) -> str:
 
 def handler(event, context):
     """
-    Text analysis tool Lambda function for GASP AgentCore Gateway.
+    Text analysis tool Lambda function for FAST AgentCore Gateway.
 
     DESIGN PATTERN:
     This Lambda follows the "one tool per Lambda" design pattern, where each Lambda function

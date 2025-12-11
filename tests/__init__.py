@@ -2,5 +2,5 @@
 # SPDX-License-Identifier: MIT-0
 
 """
-Test package for GASP
+Test package for FAST
 """

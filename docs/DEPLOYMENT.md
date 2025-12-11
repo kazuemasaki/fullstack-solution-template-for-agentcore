@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide walks you through deploying the GenAIID AgentCore Starter Pack (GASP) to AWS.
+This guide walks you through deploying the Fullstack AgentCore Solution Template (FAST) to AWS.
 
 ## Prerequisites
 
@@ -37,8 +37,8 @@ uv pip install -e ".[dev]"
 
 ```bash
 # Create and activate conda environment
-conda create -n gasp python=3.12
-conda activate gasp
+conda create -n fast python=3.12
+conda activate fast
 
 # Install dependencies
 pip install -e ".[dev]"
@@ -48,8 +48,8 @@ pip install -e ".[dev]"
 
 ```bash
 # Create and activate virtual environment
-python -m venv gasp-env
-source gasp-env/bin/activate  # On Windows: gasp-env\Scripts\activate
+python -m venv fast-env
+source fast-env/bin/activate  # On Windows: fast-env\Scripts\activate
 
 # Install dependencies
 pip install -e ".[dev]"

@@ -1,10 +1,10 @@
 # AgentCore Gateway Implementation
 
-This document describes how GASP implements AgentCore Gateway with Lambda targets to provide a scalable, production-ready tool execution architecture.
+This document describes how FAST implements AgentCore Gateway with Lambda targets to provide a scalable, production-ready tool execution architecture.
 
 ## Overview
 
-GASP uses **AgentCore Gateway with Lambda Targets** to enable agents to access external tools and services. This architecture provides a clean separation between agent logic and tool implementation, allowing for independent scaling and deployment of individual tools.
+FAST uses **AgentCore Gateway with Lambda Targets** to enable agents to access external tools and services. This architecture provides a clean separation between agent logic and tool implementation, allowing for independent scaling and deployment of individual tools.
 
 ## Architecture Comparison
 
@@ -18,13 +18,13 @@ There are two primary approaches to implementing AgentCore Gateway:
 - Simpler setup for basic scenarios
 - Direct client → gateway communication
 
-#### Lambda Targets (GASP's Choice)
+#### Lambda Targets (FAST's Choice)
 - Gateway acts as a proxy/router to external Lambda functions
 - Each tool is implemented as a separate Lambda function
 - Client → Gateway → Lambda → Gateway → Client flow
 - Production-ready architecture with enterprise benefits
 
-### Why GASP Uses Lambda Targets
+### Why FAST Uses Lambda Targets
 
 We chose Lambda targets for the following production advantages:
 
@@ -51,7 +51,7 @@ The gateway is created using AWS CDK L1 constructs with the following configurat
 
 ### Lambda Target Structure
 
-Each Lambda target in GASP follows this pattern:
+Each Lambda target in FAST follows this pattern:
 
 ```python
 def handler(event, context):
@@ -123,7 +123,7 @@ def lambda_handler(event, context):
         # Route to appropriate tool handler
         if tool_name == "sample_tool":
             name = event.get('name', 'World')
-            result = f"Hello, {name}! This is a sample tool from GASP."
+            result = f"Hello, {name}! This is a sample tool from FAST."
             return {"result": result}
         else:
             raise ValueError(f"Unknown tool: {tool_name}")
@@ -248,7 +248,7 @@ The gateway integrates with AgentCore Runtime through:
 
 ### Integration with Agents via MCP
 
-Agents connect to the Gateway using the Model Context Protocol (MCP). GASP provides two integration approaches:
+Agents connect to the Gateway using the Model Context Protocol (MCP). FAST provides two integration approaches:
 
 #### LangGraph with MultiServerMCPClient
 
@@ -444,7 +444,7 @@ const gateway = new bedrockagentcore.CfnGateway(this, "AgentCoreGateway", {
 
 ## Related Documentation
 
-- [Deployment Guide](DEPLOYMENT.md) - How to deploy GASP infrastructure
+- [Deployment Guide](DEPLOYMENT.md) - How to deploy FAST infrastructure
 - [Development Best Practices](../docs/development-best-practices.md) - General development guidelines
 - [AWS AgentCore Gateway Documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/agentcore-gateway.html) - Official AWS documentation
 - [AWS Gateway Lambda Target Documentation](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/gateway-add-target-lambda.html) - Lambda target implementation details

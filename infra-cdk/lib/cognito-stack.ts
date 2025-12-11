@@ -55,7 +55,7 @@ export class CognitoStack extends cdk.NestedStack {
 <p>Please use this temporary password to log in and set your permanent password.</p>
 <p>The CloudFront URL to your application is stored as an output in the "${config.stack_name_base}" stack, and will be printed to your terminal once the deployment process completes.</p>
 <p>Thanks,</p>
-<p>AWS GENAIID Team</p>`,
+<p>Fullstack AgentCore Solution Template Team</p>`,
       },
     })
 
@@ -82,7 +82,7 @@ export class CognitoStack extends cdk.NestedStack {
     this.userPoolDomain = new cognito.UserPoolDomain(this, "UserPoolDomain", {
       userPool: userPool,
       cognitoDomain: {
-        domainPrefix: `${config.stack_name_base}-${cdk.Aws.ACCOUNT_ID}-${cdk.Aws.REGION}`,
+        domainPrefix: `${config.stack_name_base.toLowerCase()}-${cdk.Aws.ACCOUNT_ID}-${cdk.Aws.REGION}`,
       },
     })
 

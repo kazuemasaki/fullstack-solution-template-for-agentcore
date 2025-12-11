@@ -187,7 +187,7 @@ def main():
     print_section("Tool Call Test")
     print("Calling text analysis tool...")
     
-    tool_result = call_tool(gateway_url, access_token, "GASPAgent___text_analysis_tool", {
+    tool_result = call_tool(gateway_url, access_token, "FASTAgent___text_analysis_tool", {
         "text": "Hello world! This is a sample text for analysis. Hello again!",
         "N": 3
     })

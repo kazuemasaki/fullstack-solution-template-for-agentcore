@@ -1,6 +1,6 @@
 # Agent Configuration Guide
 
-GASP supports any agent framework that can run in a container. This guide covers how to use existing patterns, create your own, and configure agent behavior.
+FAST supports any agent framework that can run in a container. This guide covers how to use existing patterns, create your own, and configure agent behavior.
 
 ---
 

@@ -1,17 +1,17 @@
 Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 SPDX-License-Identifier: MIT-0
 
-# Contributing to the GenAIID AgentCore Starter Pack (GASP)
+# Contributing to the Fullstack AgentCore Solution Template (FAST)
 
-Thank you for your interest in contributing to the GenAIID AgentCore Starter Pack (GASP)! This document provides guidelines and instructions for contributing to this project.
+Thank you for your interest in contributing to the Fullstack AgentCore Solution Template (FAST)! This document provides guidelines and instructions for contributing to this project.
 
 ## Table of Contents
 
-- [Contributing to the GenAIID AgentCore Starter Pack (GASP)](#contributing-to-the-genaiid-agentcore-starter-pack-gasp)
+- [Contributing to the Fullstack AgentCore Solution Template (FAST)](#contributing-to-the-fullstack-agentcore-solution-template-fast)
   - [Table of Contents](#table-of-contents)
 - [Code of Conduct](#code-of-conduct)
   - [Use of AI Coding Assistants by Developers (Q CLI, Cline, Kiro, etc)](#use-of-ai-coding-assistants-by-developers-q-cli-cline-kiro-etc)
-- [GASP Tenets](#gasp-tenets)
+- [FAST Tenets](#fast-tenets)
 - [Integrated Feature, or Documentation?](#integrated-feature-or-documentation)
 - [Getting Started](#getting-started)
   - [Development Environment Setup](#development-environment-setup)
@@ -32,25 +32,25 @@ For more information see the [Code of Conduct FAQ](https://aws.github.io/code-of
 opensource-codeofconduct@amazon.com with any additional questions or comments.
 
 ## Use of AI Coding Assistants by Developers (Q CLI, Cline, Kiro, etc)
-Use of AI coding assistants is encouraged when developing the core GASP code base. However, **the developer leveraging AI should be able to explain every line of code that AI wrote, without the help of AI**. So, use it slowly, and understand what is doing before hitting "`y`".
+Use of AI coding assistants is encouraged when developing the core FAST code base. However, **the developer leveraging AI should be able to explain every line of code that AI wrote, without the help of AI**. So, use it slowly, and understand what is doing before hitting "`y`".
 
-Note, the above guideline applies to GASP core _developers_ who are _contributing_ to the GASP code base. GASP is designed for its _users_ to use AI coding assistants to build a full stack application with GASP as a starting point. _Users_ can hold themselves to whatever standards they prefer.
+Note, the above guideline applies to FAST core _developers_ who are _contributing_ to the FAST code base. FAST is designed for its _users_ to use AI coding assistants to build a full stack application with FAST as a starting point. _Users_ can hold themselves to whatever standards they prefer.
 
-# GASP Tenets
-Contributions must comply with the five core tenets of the GASP solution:
+# FAST Tenets
+Contributions must comply with the five core tenets of the FAST solution:
 1. **Simplicity, simplicity, simplicity**: The starter pack should be just that, a starter pack. It should be bare bones and without any frills, to keep it as easy to adopt as possible. Developers, who are often scientists and not SDEs, should start with the starter pack to handle most of the undifferentiated heavy lifting components of building a full stack application then add onto it, not start with a bloated package and have to remove unnecessary features.
-2. **Adoptability though Documentation**: The starter pack should be extremely well documented. While non-core features may not exist in the code base, approaches for implementing them should appear in markdown files in the repository. Users of GASP should instruct their coding assistants to prioritize following this documentation above all else. 
+2. **Adoptability though Documentation**: The starter pack should be extremely well documented. While non-core features may not exist in the code base, approaches for implementing them should appear in markdown files in the repository. Users of FAST should instruct their coding assistants to prioritize following this documentation above all else. 
 3. **Vibe Friendly**: The starter pack should have READMEs and guides demonstrating how to use adapt it according to best practices with vibe coding. It should have opinions on recommended MCP servers and workflows for development. It should show developers that they don’t need to understand any React to modify the frontend.
 4. **Opinionated Language and Framework**: Python for the backend as it is the language everyone (including LLMs) is most comfortable with. React for the frontend to keep it as close to production grade as possible. CDK for the infrastructure as code for the modularity.
 5. **Single threaded owner**: The starter pack should always have a single-threaded owner/team who maintains it and decides which features are important enough to add into code vs into documentation files (see Tenets #1 and #2).
 
 # Integrated Feature, or Documentation?
-GASP is a _documentation heavy solution_. Rather than supporting all possible configurations of agentic applications and requirements out-of-the-box, GASP will support basic starting points for common applications and will have extensive documentation (markdown files) describing how to build on the baseline with best practices so developers can use coding assistants to build exactly what they need.
+FAST is a _documentation heavy solution_. Rather than supporting all possible configurations of agentic applications and requirements out-of-the-box, FAST will support basic starting points for common applications and will have extensive documentation (markdown files) describing how to build on the baseline with best practices so developers can use coding assistants to build exactly what they need.
 
-In this vein, "contributing" to the GASP code base will often be in form of a single, well-authored markdown file which may or may not even contain code snippets. **It is recommended that developers research best practices, implement their desired feature, and submit a pull request for review.** It is possible that instead of accepting the pull request, the contributor to be asked to convert their contribution into a markdown document instead. That doesn't mean the effort coding up the PR was a waste! It instead means that the effort will serve future GASP users more effectively if it is condensed into a documentation file containing code snippets. This is the manifestation of enforcing Tenets #1 and #2 above.
+In this vein, "contributing" to the FAST code base will often be in form of a single, well-authored markdown file which may or may not even contain code snippets. **It is recommended that developers research best practices, implement their desired feature, and submit a pull request for review.** It is possible that instead of accepting the pull request, the contributor to be asked to convert their contribution into a markdown document instead. That doesn't mean the effort coding up the PR was a waste! It instead means that the effort will serve future FAST users more effectively if it is condensed into a documentation file containing code snippets. This is the manifestation of enforcing Tenets #1 and #2 above.
 
 # Getting Started
-This section describes how _GASP contributors_ should get started. If you are a _GASP user_ (a scientist or engineer leveraging GASP to build a fullstack agentic solution for a customer engagement) please see the top level repository README instead.
+This section describes how _FAST contributors_ should get started. If you are a _FAST user_ (a scientist or engineer leveraging FAST to build a fullstack agentic solution for a customer engagement) please see the top level repository README instead.
 
 ## Development Environment Setup
 
@@ -151,9 +151,9 @@ Familiarize yourself with the project structure:
 
 # Reporting Bugs/Feature Requests
 
-We welcome you to use the [GitLab issue tracker](https://code.aws.dev/proserve/genaiid/reusable-assets/genaiid-agentcore-starter-pack/-/issues) to report bugs or suggest features for the GASP solution.
+We welcome you to use the [GitLab issue tracker](https://code.aws.dev/proserve/genaiid/reusable-assets/fullstack-agentcore-solution-template/-/issues) to report bugs or suggest features for the FAST solution.
 
 
 ---
 
-Thank you for contributing to the GenAIID AgentCore Starter Pack (GASP)!
+Thank you for contributing to the Fullstack AgentCore Solution Template (FAST)!

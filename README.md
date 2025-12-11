@@ -1,14 +1,14 @@
-# GenAIID AgentCore Starter Pack (GASP)
+# Fullstack AgentCore Solution Template (FAST)
 
-The GenAIID AgentCore Starter Pack (GASP) is a starter project repository that enables users (delivery scientists and engineers) to quickly deploy a secured, web-accessible React frontend connected to an AgentCore backend. Its purpose is to accelerate building full stack applications on AgentCore from weeks to days by handling the undifferentiated heavy lifting of infrastructure setup and to enable vibe-coding style development on top. The only central dependency of GASP is AgentCore. It is agnostic to agent SDK (Strands, LangGraph, etc) and to coding assistant platforms (Q, Kiro, Cline, Claude Code, etc).
+The Fullstack AgentCore Solution Template (FAST) is a starter project repository that enables users (delivery scientists and engineers) to quickly deploy a secured, web-accessible React frontend connected to an AgentCore backend. Its purpose is to accelerate building full stack applications on AgentCore from weeks to days by handling the undifferentiated heavy lifting of infrastructure setup and to enable vibe-coding style development on top. The only central dependency of FAST is AgentCore. It is agnostic to agent SDK (Strands, LangGraph, etc) and to coding assistant platforms (Q, Kiro, Cline, Claude Code, etc).
 
-GASP is designed with security and vibe-codability as primary tenets. Best practices and knowledge from experts are codified in _documentation_ in this repository rather than in _code_. By including this documentation in an AI coding assistant's context, or by instructing the AI coding assistant to leverage best practices and code snippets found in the documentation, delivery scientists and developers can quickly vibe-build AgentCore applications for any use case. AI coding assistants can be used to fully customize the frontend and the cdk infrastructure, enabling scientists to focus the areas where their knowledge is most impactful: the actual prompt engineering and GenAI implementation details.
+FAST is designed with security and vibe-codability as primary tenets. Best practices and knowledge from experts are codified in _documentation_ in this repository rather than in _code_. By including this documentation in an AI coding assistant's context, or by instructing the AI coding assistant to leverage best practices and code snippets found in the documentation, delivery scientists and developers can quickly vibe-build AgentCore applications for any use case. AI coding assistants can be used to fully customize the frontend and the cdk infrastructure, enabling scientists to focus the areas where their knowledge is most impactful: the actual prompt engineering and GenAI implementation details.
 
-With GASP as a starting point and development framework, delivery scientists and engineers will accelerate their development process and deliver production quality AgentCore code following architecture and security best practices without having to learn any frontend or infrastructure (cdk) code.
+With FAST as a starting point and development framework, delivery scientists and engineers will accelerate their development process and deliver production quality AgentCore code following architecture and security best practices without having to learn any frontend or infrastructure (cdk) code.
 
-## GASP Baseline System
+## FAST Baseline System
 
-GASP comes deployable out-of-the-box with a fully functioning, full-stack application. This application represents starts as a basic multi-turn chat agent where the backend agent has access to tools. **Do not let this deter you, even if your use case is entirely different! If your application requires AgentCore, customizing GASP to any use case is extremely straightforward. That is the intended use of GASP!**
+FAST comes deployable out-of-the-box with a fully functioning, full-stack application. This application represents starts as a basic multi-turn chat agent where the backend agent has access to tools. **Do not let this deter you, even if your use case is entirely different! If your application requires AgentCore, customizing FAST to any use case is extremely straightforward. That is the intended use of FAST!**
 
 The application is intentionally kept very, very simple to allow developers to easily build up whatever they want on top of the baseline. The tools shipped out of the box include:
 
@@ -23,13 +23,13 @@ The application is intentionally kept very, very simple to allow developers to e
 Try asking the agent to analyze text or execute Python code to see these tools in action.
 
 
-## GASP User Setup
+## FAST User Setup
 
-If you are a delivery scientist or engineer who wants to use GASP to build a full stack application, this is the section for you.
+If you are a delivery scientist or engineer who wants to use FAST to build a full stack application, this is the section for you.
 
-GASP is designed to be forked and deployed out of the box with a security-approved baseline system working. Your task will be to customize it to create your own full stack application to to do (literally) anything on AgentCore.
+FAST is designed to be forked and deployed out of the box with a security-approved baseline system working. Your task will be to customize it to create your own full stack application to to do (literally) anything on AgentCore.
 
-Deploying the full stack out-of-the-box GASP baseline system is only a few cdk commands once you have forked the repo, namely: 
+Deploying the full stack out-of-the-box FAST baseline system is only a few cdk commands once you have forked the repo, namely: 
 
 ```bash
 cd infra-cdk
@@ -40,14 +40,14 @@ cd ..
 ./scripts/deploy-frontend.sh
 ```
 
-See the [deployment README](docs/DEPLOYMENT.md) for detailed instructions on how to deploy GASP into an AWS account.
+See the [deployment README](docs/DEPLOYMENT.md) for detailed instructions on how to deploy FAST into an AWS account.
 
 What comes next? That's up to you, the developer. With your requirements in mind, open up your coding assistant, describe what you'd like to do, and begin. The steering docs in this repository help guide coding assistants with best practices, and encourage them to always refer to the documentation built-in to the repository to make sure you end up building something great.
 
 
 ## Architecture
 
-![Architecture Diagram](docs/architecture-diagram/GASP-architecture-20251201.png)
+![Architecture Diagram](docs/architecture-diagram/FAST-architecture-20251201.png)
 
 The out-of-the-box architecture is shown above. Note that Amazon Cognito is used in four places:
 1. User-based login to the frontend web application on CloudFront
@@ -65,7 +65,7 @@ The out-of-the-box architecture is shown above. Note that Amazon Cognito is used
 ## Project Structure
 
 ```
-genaiid-agentcore-starter-pack/
+fullstack-agentcore-solution-template/
 ├── frontend/                 # Next.js React frontend application
 │   ├── src/
 │   │   ├── app/            # Next.js app router pages

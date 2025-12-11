@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "GenAIID AgentCore Starter Pack",
-  description: "A starter kit for building GenAI applications with AgentCore",
+  title: "Fullstack AgentCore Solution Template",
+  description: "A solution template for building GenAI applications with AgentCore",
 }
 
 export default function RootLayout({

@@ -1,6 +1,6 @@
 # Deployment and Test Scripts
 
-This directory contains scripts for deploying and testing the GenAIID AgentCore Starter Pack
+This directory contains scripts for deploying and testing the Fullstack AgentCore Solution Template
 infrastructure and frontend.
 
 ## Main Deployment Workflow

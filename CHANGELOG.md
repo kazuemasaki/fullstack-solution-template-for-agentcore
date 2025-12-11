@@ -1,9 +1,21 @@
 # Changelog
 
-All notable changes to the GenAIID AgentCore Starter Pack (GASP) will be documented in this file.
+All notable changes to the Fullstack AgentCore Solution Template (FAST) will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.3] - 2025-12-11
+
+### Changed
+- Renamed project from "GenAIID AgentCore Starter Pack (GASP)" to "Fullstack AgentCore Solution Template (FAST)"
+- Updated all documentation, code comments, and configuration files to use new naming
+- Updated repository URLs and package names to reflect new branding
+- Improved configuration management to require explicit config.yaml file
+
+### Fixed
+- Fixed Cognito domain prefix to use lowercase for compatibility
+- Removed hardcoded default values in configuration manager
 
 ## [0.1.2] - 2025-12-05
 
@@ -42,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restricted Secrets Manager IAM permissions to specific secrets
 
 ### Fixed
-- Typo fix in top level GASP stack description
+- Typo fix in top level FAST stack description
 - Updated version references from 0.0.1 to 0.1.0 in infra-cdk/package.json
 - Removed unused imports
 
@@ -54,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.0] - 2025-11-13
 
 ### Added
-- Initial release of GenAIID AgentCore Starter Pack
+- Initial release of Fullstack AgentCore Solution Template
 - Full-stack React frontend with Next.js, TypeScript, and Tailwind CSS
 - AgentCore backend integration with multiple agent providers
 - AWS Cognito authentication with JWT support

@@ -1,6 +1,6 @@
-# GenAIID AgentCore Starter Pack - Infrastructure
+# Fullstack AgentCore Solution Template - Infrastructure
 
-This directory contains the AWS CDK infrastructure code for deploying the GenAIID AgentCore Starter Pack.
+This directory contains the AWS CDK infrastructure code for deploying the Fullstack AgentCore Solution Template.
 
 ## Prerequisites
 
@@ -50,7 +50,7 @@ npx cdk deploy --all
 Edit `config.yaml` to customize your deployment:
 
 ```yaml
-stack_name_base: "genaiid-agentcore-starter-pack"
+stack_name_base: "fullstack-agentcore-solution-template"
 
 frontend:
   domain_name: null  # Optional: Set to your custom domain
@@ -65,14 +65,14 @@ backend:
 ```
 infra-cdk/
 ├── bin/
-│   └── gasp-cdk.ts          # CDK app entry point
+│   └── fast-cdk.ts          # CDK app entry point
 ├── lib/
-│   ├── gasp-cdk-stack.ts    # Main orchestrator stack
+│   ├── fast-cdk-stack.ts    # Main orchestrator stack
 │   ├── backend-stack.ts     # Backend/AgentCore stack
 │   ├── frontend-stack.ts    # Frontend/CloudFront stack
 │   └── utils/               # Utility functions and constructs
 ├── test/
-│   └── gasp-cdk.test.ts     # Unit tests
+│   └── fast-cdk.test.ts     # Unit tests
 ├── cdk.json                 # CDK configuration
 ├── config.yaml              # Application configuration
 ├── package.json
@@ -133,9 +133,9 @@ The agent container builds use a specific configuration to handle the repository
 
 **Solution**: Use repository root as build context with optimized file filtering:
 
-1. **Build Context**: Repository root (`/home/ubuntu/gitlab/genaiid-agentcore-starter-pack/`)
+1. **Build Context**: Repository root (`/home/ubuntu/gitlab/fullstack-agentcore-solution-template/`)
 2. **Dockerfile Location**: `patterns/{pattern}/Dockerfile` 
-3. **Package Installation**: Install GASP package (`gateway/` + `pyproject.toml`) as proper Python package
+3. **Package Installation**: Install FAST package (`gateway/` + `pyproject.toml`) as proper Python package
 4. **File Filtering**: `.dockerignore` excludes large directories to prevent build hangs
 
 #### Docker Context Optimization
@@ -154,7 +154,7 @@ The agent container builds use a specific configuration to handle the repository
 
 Instead of copying files with relative paths, the Dockerfile:
 
-1. **Installs GASP package**: `RUN pip install --no-cache-dir -e .`
+1. **Installs FAST package**: `RUN pip install --no-cache-dir -e .`
    - Makes `gateway` utilities available as `from gateway.utils.*`
    - Eliminates need for file copying between directories
    - Works consistently across all agent patterns
@@ -163,7 +163,7 @@ Instead of copying files with relative paths, the Dockerfile:
    - Minimal file copying for the specific agent
    - Clean separation between shared utilities and agent logic
 
-3. **Removes problematic requirements**: Cleaned `requirements.txt` to avoid duplicate GASP installation
+3. **Removes problematic requirements**: Cleaned `requirements.txt` to avoid duplicate FAST installation
 
 This approach scales to multiple agent patterns without code duplication while maintaining clean Docker builds.
 

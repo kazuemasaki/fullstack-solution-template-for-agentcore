@@ -2,5 +2,5 @@
 # SPDX-License-Identifier: MIT-0
 
 """
-Integration tests for GASP
+Integration tests for FAST
 """
