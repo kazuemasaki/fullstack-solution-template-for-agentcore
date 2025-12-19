@@ -37,7 +37,7 @@ npm install
 cdk bootstrap # Once ever
 cdk deploy
 cd ..
-./scripts/deploy-frontend.sh
+python scripts/deploy-frontend.py
 ```
 
 See the [deployment README](docs/DEPLOYMENT.md) for detailed instructions on how to deploy FAST into an AWS account.
@@ -95,8 +95,7 @@ fullstack-agentcore-solution-template/
 │   ├── tools/              # Gateway tool implementations
 │   └── utils/              # Gateway utility functions
 ├── scripts/                # Deployment and test scripts
-│   ├── deploy-frontend.sh  # Frontend deployment helper
-│   ├── post-deploy.py      # Configuration generation
+│   ├── deploy-frontend.py  # Cross-platform frontend deployment
 │   └── test-*.py          # Various test utilities
 ├── docs/                   # Documentation
 │   ├── DEPLOYMENT.md       # Deployment guide

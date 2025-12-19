@@ -12,13 +12,13 @@ cd infra-cdk
 cdk deploy
 ```
 
-This deploys the CDK stack. Configuration generation is now handled during frontend deployment.
+This deploys the CDK stack. Configuration generation is handled during frontend deployment.
 
 ### 2. Deploy Frontend
 
 ```bash
 # From root directory
-./scripts/deploy-frontend.sh
+python scripts/deploy-frontend.py
 ```
 
 This script automatically:
@@ -32,15 +32,8 @@ This script automatically:
 
 ### Frontend Deployment
 
-- `deploy-frontend.sh` - Complete frontend deployment with automatic dependency management and
-  config generation. Calls the `post-deploy.py` script below automatically, and will run `npm`
-  commands as needed.
-
-### Configuration Generation
-
-_(You will not need to run this manually)_
-
-- `post-deploy.py` - Generates `aws-exports.json` from stack outputs
+- `deploy-frontend.py` - Cross-platform frontend deployment script (works on Windows, Mac, Linux).
+  Uses only Python standard library and AWS CLI. Handles dependency management and config generation.
 
 The script creates `frontend/public/aws-exports.json` with the following structure. This information
 is read by the React application to configure Cognito Authentication. If any of this is incorrect,
@@ -62,7 +55,7 @@ change anything:
 ## Requirements
 
 - AWS CLI configured with appropriate permissions
-- Python 3 (for post-deploy.py)
+- Python 3.8+ (standard library only, no pip install needed for deployment)
 - Node.js and npm (for frontend build)
 - CDK stack deployed with the required outputs:
   - `CognitoClientId`
@@ -71,11 +64,10 @@ change anything:
 
 ## Key Features
 
+- **Cross-Platform**: Works on Windows, Mac, and Linux
+- **No Python Dependencies**: Uses only standard library (no virtual environment needed)
 - **Automatic Region Detection**: Extracts region directly from CloudFormation stack ARN
 - **Smart Dependency Management**: Automatically installs npm dependencies when needed
-- **No Custom Resources**: Avoids CDK custom resource deployment issues
-- **Local Generation**: Fast and reliable configuration generation
-- **Easy Debugging**: Clear error messages and logging
 - **Fresh Config**: Always generates up-to-date configuration from current stack outputs
 
 ## New User Experience
@@ -86,7 +78,7 @@ For brand new installations, simply run:
 cd infra-cdk
 cdk deploy
 cd ..
-./scripts/deploy-frontend.sh
+python scripts/deploy-frontend.py
 ```
 
 The frontend deployment script will automatically handle:
@@ -198,7 +190,7 @@ uv run python scripts/test-feedback-api.py
 
 ## Shared Utilities
 
-`test_utils.py` provides common functions:
+`utils.py` provides common functions for test scripts:
 
 - Stack configuration and SSM parameter retrieval
 - Cognito authentication
