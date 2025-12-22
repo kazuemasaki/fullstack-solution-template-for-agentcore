@@ -40,14 +40,14 @@ cd ..
 python scripts/deploy-frontend.py
 ```
 
-See the [deployment README](docs/DEPLOYMENT.md) for detailed instructions on how to deploy FAST into an AWS account.
+See the [deployment guide](docs/docs/DEPLOYMENT.md) for detailed instructions on how to deploy FAST into an AWS account.
 
 What comes next? That's up to you, the developer. With your requirements in mind, open up your coding assistant, describe what you'd like to do, and begin. The steering docs in this repository help guide coding assistants with best practices, and encourage them to always refer to the documentation built-in to the repository to make sure you end up building something great.
 
 
 ## Architecture
 
-![Architecture Diagram](docs/architecture-diagram/FAST-architecture-20251201.png)
+![Architecture Diagram](docs/docs/architecture-diagram/FAST-architecture-20251201.png)
 
 The out-of-the-box architecture is shown above. Note that Amazon Cognito is used in four places:
 1. User-based login to the frontend web application on CloudFront
@@ -97,13 +97,22 @@ fullstack-agentcore-solution-template/
 ├── scripts/                # Deployment and test scripts
 │   ├── deploy-frontend.py  # Cross-platform frontend deployment
 │   └── test-*.py          # Various test utilities
-├── docs/                   # Documentation
-│   ├── DEPLOYMENT.md       # Deployment guide
-│   ├── AGENT_CONFIGURATION.md # Agent setup guide
-│   ├── MEMORY_INTEGRATION.md # Memory integration guide
-│   ├── GATEWAY.md          # Gateway integration guide
-│   ├── STREAMING.md        # Streaming implementation guide
-│   └── TOOL_AC_CODE_INTERPRETER.md # Code Interpreter integration guide
+├── docs/                   # MkDocs documentation site
+│   ├── mkdocs.yml          # MkDocs configuration
+│   ├── requirements.txt    # Documentation dependencies
+│   ├── Makefile            # Build and deployment commands
+│   ├── README.md           # Documentation system overview
+│   └── docs/               # Documentation content
+│       ├── .nav.yml        # Navigation configuration
+│       ├── README.md       # Documentation landing page
+│       ├── DEPLOYMENT.md   # Deployment guide
+│       ├── AGENT_CONFIGURATION.md # Agent setup guide
+│       ├── MEMORY_INTEGRATION.md # Memory integration guide
+│       ├── GATEWAY.md      # Gateway integration guide
+│       ├── STREAMING.md    # Streaming implementation guide
+│       ├── TOOL_AC_CODE_INTERPRETER.md # Code Interpreter guide
+│       ├── VERSION_BUMP_PLAYBOOK.md # Version management
+│       └── architecture-diagram/ # Architecture diagrams
 ├── tests/                  # Test suite
 ├── vibe-context/           # AI coding assistant context
 └── README.md
