@@ -19,8 +19,6 @@ stages:
 
 developer_tests:
   stage: developer_tests
-  rules:
-    - when: always  # Run on all branches
 
   before_script:
       - python --version
