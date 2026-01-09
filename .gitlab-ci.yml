@@ -1,3 +1,5 @@
+# This file is only used for CI/CD pipelines when the repository is hosted within GITLAB
+
 # You can override the included template(s) by including variable overrides
 # SAST customization: https://docs.gitlab.com/ee/user/application_security/sast/#customizing-the-sast-settings
 # Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure
@@ -6,7 +8,7 @@
 # Note that environment variables can be set in several places
 # See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
 
-# This is used for ASH security scanning
+# This is used for ASH security scanning, during internal AWS development of applications
 include:
   - component: code.aws.dev/proserve/automated-security-helper/automated-security-helper/ash@~latest
 

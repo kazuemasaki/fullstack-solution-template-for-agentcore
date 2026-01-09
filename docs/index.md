@@ -1,3 +1,5 @@
+<!-- This file is only used for the mkdocs documentation hosting webpage -->
+
 # Fullstack AgentCore Solution Template Documentation
 
 Welcome to the Fullstack AgentCore Solution Template (FAST) documentation!
