@@ -1,6 +1,6 @@
 {
   "name": "fast-cdk",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "bin": {
     "fast-cdk": "bin/fast-cdk.js"
   },

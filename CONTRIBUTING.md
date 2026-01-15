@@ -151,7 +151,7 @@ Familiarize yourself with the project structure:
 
 # Reporting Bugs/Feature Requests
 
-We welcome you to use the [github issue tracker](https://github.com/awslabs/amazon-bedrock-agentcore-samples/issues) to report bugs or suggest features for the FAST solution.
+We welcome you to use the [GitHub issue tracker](https://github.com/awslabs/fullstack-solution-template-for-agentcore/issues) to report bugs or suggest features for the FAST solution.
 
 
 ---
