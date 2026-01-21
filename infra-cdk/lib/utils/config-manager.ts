@@ -16,8 +16,7 @@ export interface AppConfig {
   idp_agent?: {
     url: string
     region: string
-    cognito_domain?: string
-    client_id?: string
+    runtime_arn?: string
   }
 }
 

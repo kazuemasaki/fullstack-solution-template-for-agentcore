@@ -13,12 +13,10 @@ extracts relevant information, validates it against inventory and
 customer backlog data, and provides an audit summary.
 """
 
-import base64
 import os
 import traceback
 
 import boto3
-import requests
 from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
 from bedrock_agentcore.memory.integrations.strands.session_manager import (
     AgentCoreMemorySessionManager,
@@ -26,14 +24,12 @@ from bedrock_agentcore.memory.integrations.strands.session_manager import (
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 from gateway.utils.gateway_access_token import get_gateway_access_token
 from mcp.client.streamable_http import streamablehttp_client
+from mcp_proxy_for_aws.client import aws_iam_streamablehttp_client
 from strands import Agent
 from strands.models import BedrockModel
 from strands.tools.mcp import MCPClient
 
 app = BedrockAgentCoreApp()
-
-# Cache for IDP agent access token
-_idp_access_token_cache = {"token": None, "expires_at": 0}
 
 # System prompt for the order audit agent
 SYSTEM_PROMPT = """あなたは発注監査エージェントです。
@@ -105,72 +101,6 @@ def get_secret(secret_name: str) -> str:
         raise ValueError(f"Failed to retrieve secret {secret_name}: {e}")
 
 
-def get_idp_agent_access_token() -> str:
-    """
-    Get OAuth2 access token for IDP Bedrock Agent.
-
-    Uses client credentials flow with IDP agent's Cognito settings.
-    Token is cached to avoid unnecessary requests.
-    """
-    import time
-
-    # Check cache
-    if _idp_access_token_cache["token"] and _idp_access_token_cache["expires_at"] > time.time():
-        return _idp_access_token_cache["token"]
-
-    stack_name = os.environ.get("STACK_NAME")
-    if not stack_name:
-        raise ValueError("STACK_NAME environment variable is required")
-
-    # Get IDP agent Cognito settings from environment or SSM
-    idp_cognito_domain = os.environ.get("IDP_COGNITO_DOMAIN")
-    idp_client_id = os.environ.get("IDP_CLIENT_ID")
-
-    if not idp_cognito_domain or not idp_client_id:
-        # Try to get from SSM
-        try:
-            idp_cognito_domain = get_ssm_parameter(f"/{stack_name}/idp-agent-cognito-domain")
-            idp_client_id = get_ssm_parameter(f"/{stack_name}/idp-agent-client-id")
-        except ValueError:
-            raise ValueError("IDP agent Cognito settings not found in environment or SSM")
-
-    # Get client secret from Secrets Manager
-    try:
-        idp_client_secret = get_secret(f"/{stack_name}/idp-agent-client-secret")
-    except ValueError:
-        raise ValueError("IDP agent client secret not found in Secrets Manager")
-
-    # Request token using client credentials flow
-    token_url = f"https://{idp_cognito_domain}/oauth2/token"
-    auth_header = base64.b64encode(f"{idp_client_id}:{idp_client_secret}".encode()).decode()
-
-    response = requests.post(
-        token_url,
-        headers={
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Authorization": f"Basic {auth_header}",
-        },
-        data={
-            "grant_type": "client_credentials",
-            "scope": "idp-bedrock-api/access",  # Required scope for client credentials flow
-        },
-        timeout=10,
-    )
-
-    if response.status_code != 200:
-        raise ValueError(f"Failed to get IDP agent token: {response.status_code} {response.text}")
-
-    token_data = response.json()
-    access_token = token_data["access_token"]
-    expires_in = token_data.get("expires_in", 3600)
-
-    # Cache token (with 60 second buffer)
-    _idp_access_token_cache["token"] = access_token
-    _idp_access_token_cache["expires_at"] = time.time() + expires_in - 60
-
-    return access_token
-
-
 def create_gateway_mcp_client(access_token: str) -> MCPClient:
     """
     Create MCP client for AgentCore Gateway with OAuth2 authentication.
@@ -205,33 +135,32 @@ def create_gateway_mcp_client(access_token: str) -> MCPClient:
 
 def create_idp_mcp_client() -> MCPClient:
     """
-    Create MCP client for idp_bedrock_agent (Document Processing).
+    Create MCP client for idp_bedrock_agent using IAM SigV4 authentication.
 
     This client connects to the IDP agent which provides:
     - extract_document_attributes: Extract structured data from documents
     - get_extraction_status: Check extraction job status
     - get_bucket_info: Get S3 bucket information
 
-    Note: Uses separate authentication for IDP agent (different Cognito pool).
+    Note: Uses IAM SigV4 authentication instead of Cognito OAuth2.
     """
     idp_agent_url = os.environ.get("IDP_AGENT_URL")
     if not idp_agent_url:
         print("[ORDER AUDIT] IDP_AGENT_URL not set, IDP tools will not be available")
         return None
 
-    print(f"[ORDER AUDIT] Creating IDP MCP client with URL: {idp_agent_url}")
+    idp_region = os.environ.get("IDP_AGENT_REGION", os.environ.get("AWS_REGION", "us-east-1"))
+    print(f"[ORDER AUDIT] Creating IDP MCP client with IAM SigV4 (region: {idp_region})")
 
     try:
-        # Get IDP-specific access token
-        idp_access_token = get_idp_agent_access_token()
-        print(f"[ORDER AUDIT] Got IDP access token: {idp_access_token[:20]}...")
-
-        # Create MCP client with Bearer token authentication
         idp_client = MCPClient(
-            lambda: streamablehttp_client(url=idp_agent_url, headers={"Authorization": f"Bearer {idp_access_token}"}),
+            lambda: aws_iam_streamablehttp_client(
+                endpoint=idp_agent_url,
+                aws_region=idp_region,
+                aws_service="bedrock-agentcore"
+            ),
             prefix="idp",
         )
-
         print("[ORDER AUDIT] IDP MCP client created successfully")
         return idp_client
 
