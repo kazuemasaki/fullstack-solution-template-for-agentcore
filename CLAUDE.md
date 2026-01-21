@@ -49,7 +49,7 @@ AWS向けTerraform開発に特化したサーバー
 - `ExecuteTerraformCommand` - Terraformコマンド実行
 - `RunCheckovScan` - セキュリティスキャン
 
-### 4. agentcore-mcp-server
+### 4. agentcore
 Amazon Bedrock AgentCoreの管理サーバー
 
 **ユースケース:**

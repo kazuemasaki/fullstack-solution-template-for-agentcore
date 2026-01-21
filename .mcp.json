@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "agentcore-mcp-server": {
+    "agentcore": {
       "type": "stdio",
       "command": "uvx",
       "args": [
