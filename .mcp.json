@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "agentcore-mcp-server": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "awslabs.amazon-bedrock-agentcore-mcp-server@latest"
+      ],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    },
+    "strands": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "strands-agents-mcp-server"
+      ],
+      "env": {}
+    },
+    "aws-knowledge-mcp-server": {
+      "type": "http",
+      "url": "https://knowledge-mcp.global.api.aws"
+    },
+    "terraform": {
+      "type": "stdio",
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "hashicorp/terraform-mcp-server:0.3.2"],
+      "env": {}
+    },
+    "awslabs.terraform-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.terraform-mcp-server@1.0.9"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      }
+    }
+  }
+}
