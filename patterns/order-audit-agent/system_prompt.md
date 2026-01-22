@@ -20,6 +20,10 @@ idp_bedrock_agent の extract_document_attributes ツールを使って注文書
   - 複数の商品がある場合は、商品ごとに品名・数量・納期をセットで抽出してください
   - 該当する情報が見つからない場合は「記載なし」と明記してください
 - get_extraction_status で解析ジョブの完了を待ちます
+- 最低限以下2つの方法で extract_document_attributes ツールを使い、両方の出力結果を照合して解析してください                      
+  - parsing_mode を Amazon Textract にし、attributes に ["全文テキスト"] を指定（レイアウト・表構造の正確な取得に強い）         
+  - parsing_mode を Amazon Bedrock LLM にし、attributes に前述の「抽出したい情報」を指定（意味理解・項目抽出に強い）            
+- 両者の結果に矛盾がある場合は、Textractの生テキストを優先しつつ、LLMの解釈を参考にしてください                                 
 
 ### 2. 在庫状況のチェック
 
