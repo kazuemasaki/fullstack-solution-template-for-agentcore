@@ -40,17 +40,16 @@ When audit result is "approved" and all conditions are satisfied:
 7. Order awaits approver's decision (approve/reject)
 """
 
+import asyncio
 import json
 import os
 import traceback
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 from uuid import uuid4
 
 import boto3
-import httpx
-from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
-from a2a.types import Message, Part, Role, TextPart
 from bedrock_agentcore.memory.integrations.strands.config import AgentCoreMemoryConfig
 from bedrock_agentcore.memory.integrations.strands.session_manager import (
     AgentCoreMemorySessionManager,
@@ -204,14 +203,18 @@ def create_idp_mcp_client() -> MCPClient:
 
 class OrderAgentA2ATool:
     """
-    Order Agent A2A Tool using native Strands A2A protocol.
+    Order Agent A2A Tool (invoked via AgentCore data plane, SigV4).
 
     This class wraps an Order Agent that supports the A2A protocol,
     allowing the audit agent to query waiting receipt orders by SKU
     through Agent-to-Agent communication.
 
-    The tool discovers the agent card during initialization and caches
-    the client for efficient repeated calls.
+    IMPORTANT:
+        In our environment, the Order Agent runtime is protected by SigV4, so fetching
+        `/.well-known/agent-card.json` without proper AWS authentication returns HTTP 403.
+        To avoid fragile custom HTTP signing and SDK card discovery, we invoke the A2A server
+        through the AgentCore data plane API (`InvokeAgentRuntime`) using boto3, which
+        automatically applies SigV4 signing.
     """
 
     def __init__(self, agent_url: str, agent_name: str = "Order Agent", timeout: int = 300):
@@ -226,11 +229,82 @@ class OrderAgentA2ATool:
         self.agent_url = agent_url
         self.agent_name = agent_name
         self.timeout = timeout
-        self.agent_card = None
-        self.client = None
         self._initialized = False
+        self._region = os.environ.get(
+            "ORDER_AGENT_REGION",
+            os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-east-1")),
+        )
+        self._runtime_arn: str | None = None
+        self._agentcore_client = None
 
         print(f"[ORDER AUDIT] OrderAgentA2ATool created for {agent_url}")
+
+    @staticmethod
+    def _extract_runtime_arn_from_agent_url(agent_url: str) -> str | None:
+        """Extract runtime ARN from AgentCore runtime URL (best-effort)."""
+        url = (agent_url or "").strip()
+        if not url:
+            return None
+        if url.startswith("arn:aws:bedrock-agentcore:"):
+            return url
+        marker = "/runtimes/"
+        if marker not in url:
+            return None
+        rest = url.split(marker, 1)[1]
+        encoded = rest.split("/invocations", 1)[0]
+        if not encoded:
+            return None
+        return unquote(encoded)
+
+    def _invoke_jsonrpc_sync(self, *, jsonrpc_payload: dict[str, Any]) -> str:
+        """Invoke Order Agent A2A server via AgentCore data plane API (SigV4 by boto3)."""
+        if self._runtime_arn is None or self._agentcore_client is None:
+            raise RuntimeError("Order Agent A2A client is not initialized")
+        payload_bytes = json.dumps(jsonrpc_payload, ensure_ascii=False).encode("utf-8")
+        resp = self._agentcore_client.invoke_agent_runtime(
+            agentRuntimeArn=self._runtime_arn,
+            contentType="application/json",
+            accept="application/json",
+            payload=payload_bytes,
+        )
+        body = resp.get("response")
+        if body is None:
+            raise RuntimeError("AgentCore response body is missing")
+        raw = body.read()
+        return raw.decode("utf-8", errors="replace")
+
+    @staticmethod
+    def _extract_first_artifact_text(jsonrpc_text: str) -> str:
+        """Extract artifact.parts[].text from JSON-RPC response (best-effort)."""
+        candidates: list[dict[str, Any]] = []
+        for line in jsonrpc_text.splitlines():
+            s = line.strip()
+            if not s:
+                continue
+            try:
+                obj = json.loads(s)
+            except Exception:
+                continue
+            if isinstance(obj, dict):
+                candidates.append(obj)
+
+        for obj in reversed(candidates):
+            result = obj.get("result")
+            if not isinstance(result, dict):
+                continue
+            artifacts = result.get("artifacts")
+            if not isinstance(artifacts, list) or not artifacts:
+                continue
+            selected = artifacts[0] if isinstance(artifacts[0], dict) else None
+            if not isinstance(selected, dict):
+                continue
+            parts = selected.get("parts")
+            if not isinstance(parts, list) or not parts:
+                continue
+            part0 = parts[0]
+            if isinstance(part0, dict) and isinstance(part0.get("text"), str):
+                return part0["text"]
+        return jsonrpc_text
 
     async def _ensure_initialized(self):
         """
@@ -245,19 +319,23 @@ class OrderAgentA2ATool:
         print(f"[ORDER AUDIT] Initializing A2A client for {self.agent_name}...")
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as httpx_client:
-                # Discover agent card
-                resolver = A2ACardResolver(httpx_client=httpx_client, base_url=self.agent_url)
-                self.agent_card = await resolver.get_agent_card()
-                print(f"[ORDER AUDIT] Agent card retrieved: {self.agent_card.name}")
+            runtime_arn = (
+                os.environ.get("ORDER_AGENT_RUNTIME_ARN")
+                or self._extract_runtime_arn_from_agent_url(self.agent_url)
+            )
+            if not runtime_arn:
+                raise RuntimeError(
+                    "Order Agent runtime ARN is missing. "
+                    "Set ORDER_AGENT_RUNTIME_ARN or provide ORDER_AGENT_URL in /runtimes/{arn}/invocations format."
+                )
+            self._runtime_arn = runtime_arn
+            self._agentcore_client = boto3.client("bedrock-agentcore", region_name=self._region)
 
-                # Create A2A client
-                config = ClientConfig(httpx_client=httpx_client, streaming=False)
-                factory = ClientFactory(config)
-                self.client = factory.create(self.agent_card)
-
-                self._initialized = True
-                print(f"[ORDER AUDIT] {self.agent_name} A2A client initialized successfully")
+            self._initialized = True
+            print(
+                f"[ORDER AUDIT] {self.agent_name} A2A client initialized successfully "
+                f"(runtime_arn={self._runtime_arn})"
+            )
 
         except Exception as e:
             print(f"[ORDER AUDIT ERROR] Failed to initialize {self.agent_name}: {e}")
@@ -299,26 +377,20 @@ class OrderAgentA2ATool:
             query_text = f"List WAITING_RECEIPT orders for SKU: {sku}"
             print(f"[ORDER AUDIT] Sending A2A query: {query_text}")
 
-            # Create A2A message
-            msg = Message(
-                kind="message",
-                role=Role.user,
-                parts=[Part(TextPart(kind="text", text=query_text))],
-                message_id=uuid4().hex,
-            )
-
-            # Send message and get response
-            response_text = ""
-            async with httpx.AsyncClient(timeout=self.timeout) as httpx_client:
-                config = ClientConfig(httpx_client=httpx_client, streaming=False)
-                factory = ClientFactory(config)
-                client = factory.create(self.agent_card)
-
-                async for event in client.send_message(msg):
-                    if isinstance(event, Message):
-                        for part in event.parts:
-                            if hasattr(part, "text"):
-                                response_text += part.text
+            jsonrpc = {
+                "jsonrpc": "2.0",
+                "id": f"req-{uuid4().hex}",
+                "method": "message/send",
+                "params": {
+                    "message": {
+                        "role": "user",
+                        "parts": [{"kind": "text", "text": query_text}],
+                        "messageId": f"msg-{uuid4().hex}",
+                    }
+                },
+            }
+            raw = await asyncio.to_thread(self._invoke_jsonrpc_sync, jsonrpc_payload=jsonrpc)
+            response_text = self._extract_first_artifact_text(raw)
 
             if response_text:
                 print(f"[ORDER AUDIT] A2A response received: {response_text[:100]}...")
@@ -393,8 +465,6 @@ class OrderAgentA2ATool:
 
         try:
             # Build order registration message for the Order Agent
-            import json
-
             order_data = {"supplierId": supplier_id, "items": items}
             if note:
                 order_data["note"] = note
@@ -402,26 +472,20 @@ class OrderAgentA2ATool:
             query_text = f"Create order registration with data: {json.dumps(order_data, ensure_ascii=False)}"
             print(f"[ORDER AUDIT] Sending A2A order registration request: supplierId={supplier_id}, items={len(items)}")
 
-            # Create A2A message
-            msg = Message(
-                kind="message",
-                role=Role.user,
-                parts=[Part(TextPart(kind="text", text=query_text))],
-                message_id=uuid4().hex,
-            )
-
-            # Send message and get response
-            response_text = ""
-            async with httpx.AsyncClient(timeout=self.timeout) as httpx_client:
-                config = ClientConfig(httpx_client=httpx_client, streaming=False)
-                factory = ClientFactory(config)
-                client = factory.create(self.agent_card)
-
-                async for event in client.send_message(msg):
-                    if isinstance(event, Message):
-                        for part in event.parts:
-                            if hasattr(part, "text"):
-                                response_text += part.text
+            jsonrpc = {
+                "jsonrpc": "2.0",
+                "id": f"req-{uuid4().hex}",
+                "method": "message/send",
+                "params": {
+                    "message": {
+                        "role": "user",
+                        "parts": [{"kind": "text", "text": query_text}],
+                        "messageId": f"msg-{uuid4().hex}",
+                    }
+                },
+            }
+            raw = await asyncio.to_thread(self._invoke_jsonrpc_sync, jsonrpc_payload=jsonrpc)
+            response_text = self._extract_first_artifact_text(raw)
 
             if response_text:
                 print(f"[ORDER AUDIT] Order registration response: {response_text[:200]}...")
@@ -479,26 +543,20 @@ class OrderAgentA2ATool:
             query_text = f"注文番号 {order_id} が承認されました。finalize_approved_order ツールを使用して正式な発注処理を実行してください。"
             print(f"[ORDER AUDIT] Sending A2A order processing request: orderId={order_id}")
 
-            # Create A2A message
-            msg = Message(
-                kind="message",
-                role=Role.user,
-                parts=[Part(TextPart(kind="text", text=query_text))],
-                message_id=uuid4().hex,
-            )
-
-            # Send message and get response
-            response_text = ""
-            async with httpx.AsyncClient(timeout=self.timeout) as httpx_client:
-                config = ClientConfig(httpx_client=httpx_client, streaming=False)
-                factory = ClientFactory(config)
-                client = factory.create(self.agent_card)
-
-                async for event in client.send_message(msg):
-                    if isinstance(event, Message):
-                        for part in event.parts:
-                            if hasattr(part, "text"):
-                                response_text += part.text
+            jsonrpc = {
+                "jsonrpc": "2.0",
+                "id": f"req-{uuid4().hex}",
+                "method": "message/send",
+                "params": {
+                    "message": {
+                        "role": "user",
+                        "parts": [{"kind": "text", "text": query_text}],
+                        "messageId": f"msg-{uuid4().hex}",
+                    }
+                },
+            }
+            raw = await asyncio.to_thread(self._invoke_jsonrpc_sync, jsonrpc_payload=jsonrpc)
+            response_text = self._extract_first_artifact_text(raw)
 
             if response_text:
                 print(f"[ORDER AUDIT] Order processing response: {response_text[:200]}...")
@@ -601,20 +659,41 @@ def create_order_agent_a2a_tool(agent_url: str) -> OrderAgentA2ATool:
     This factory function creates and returns an OrderAgentA2ATool that can be
     added to the audit agent's toolkit.
 
-    Args:
-        agent_url: Base URL of the Order Agent A2A server
+    Note:
+        AgentCore Runtime URLs often appear in multiple shapes depending on context.
+        For Strands A2A, the base_url MUST point to the A2A server root where
+        `/.well-known/agent-card.json` is reachable. In our environment, the Order
+        Agent serves A2A under the `/invocations` path, so we normalize:
 
-    Returns:
-        OrderAgentA2ATool instance, or None if ORDER_AGENT_URL is not set
+        - Remove any query string (e.g. `?qualifier=DEFAULT`) because it breaks path joins
+        - Ensure the URL ends with `/invocations`
     """
+
+    def _normalize_agentcore_a2a_base_url(url: str) -> str:
+        """Normalize AgentCore runtime URL for Strands A2A card discovery."""
+        normalized = (url or "").strip()
+        # Drop query string (e.g., ?qualifier=DEFAULT) so that base_url path joins are valid.
+        normalized = normalized.split("?", 1)[0]
+        normalized = normalized.rstrip("/")
+
+        # Ensure `/invocations` suffix (A2A is mounted under this path for our runtime).
+        if "/invocations" in normalized:
+            prefix = normalized.split("/invocations", 1)[0]
+            normalized = f"{prefix}/invocations"
+        else:
+            normalized = f"{normalized}/invocations"
+
+        return normalized
+
     if not agent_url:
         print("[ORDER AUDIT] ORDER_AGENT_URL not set, Order Agent A2A will not be available")
         return None
 
-    print(f"[ORDER AUDIT] Creating Order Agent A2A tool for {agent_url}")
+    normalized_url = _normalize_agentcore_a2a_base_url(agent_url)
+    print(f"[ORDER AUDIT] Creating Order Agent A2A tool for {normalized_url}")
 
     try:
-        tool_instance = OrderAgentA2ATool(agent_url=agent_url, agent_name="Order Agent")
+        tool_instance = OrderAgentA2ATool(agent_url=normalized_url, agent_name="Order Agent")
         print("[ORDER AUDIT] Order Agent A2A tool created successfully")
         return tool_instance
 

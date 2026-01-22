@@ -18,6 +18,11 @@ idp_agent:
 # Order Agent configuration (for A2A communication from audit agent)
 # Uses A2A protocol for agent-to-agent communication
 order_agent:
-  url: PLACEHOLDER_ORDER_AGENT_URL # Replace with actual Order Agent URL after deployment
+  url: https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A058264111508%3Aruntime%2Forder_upload_order_agent-fplKtb3cKC/invocations
   region: us-east-1
-  runtime_arn: PLACEHOLDER_ORDER_AGENT_ARN # Replace with actual Order Agent Runtime ARN after deployment
+  runtime_arn: arn:aws:bedrock-agentcore:us-east-1:058264111508:runtime/order_upload_order_agent-fplKtb3cKC
+
+# Order Approval configuration (for Step Functions state machine execution)
+order_approval:
+  state_machine_arn: arn:aws:states:us-east-1:058264111508:stateMachine:order-upload-order-approval
+  approver_email: niizawa.tadashi@classmethod.jp
