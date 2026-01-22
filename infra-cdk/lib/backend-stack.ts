@@ -294,7 +294,7 @@ export class BackendStack extends cdk.NestedStack {
       })
     )
 
-    // Add Secrets Manager permissions for IDP agent credentials
+    // Add Secrets Manager permissions for Gateway machine client credentials
     agentRole.addToPolicy(
       new iam.PolicyStatement({
         sid: "SecretsManagerAccess",
@@ -320,6 +320,21 @@ export class BackendStack extends cdk.NestedStack {
       })
     )
 
+    // Add IDP Agent invoke permissions (for IAM SigV4 authentication)
+    if (config.idp_agent?.runtime_arn) {
+      agentRole.addToPolicy(
+        new iam.PolicyStatement({
+          sid: "IDPAgentInvoke",
+          effect: iam.Effect.ALLOW,
+          actions: ["bedrock-agentcore:InvokeAgentRuntime"],
+          resources: [
+            config.idp_agent.runtime_arn,
+            `${config.idp_agent.runtime_arn}/*`,  // Runtime Endpoint も含める
+          ],
+        })
+      )
+    }
+
     // Environment variables for the runtime
     const envVars: { [key: string]: string } = {
       AWS_REGION: stack.region,
@@ -328,15 +343,12 @@ export class BackendStack extends cdk.NestedStack {
       STACK_NAME: config.stack_name_base, // Required for agent to find SSM parameters
     }
 
-    // Add IDP Agent settings if configured (for document extraction)
+    // Add IDP Agent settings if configured (for document extraction with IAM SigV4)
     if (config.idp_agent?.url) {
       envVars.IDP_AGENT_URL = config.idp_agent.url
     }
-    if (config.idp_agent?.cognito_domain) {
-      envVars.IDP_COGNITO_DOMAIN = config.idp_agent.cognito_domain
-    }
-    if (config.idp_agent?.client_id) {
-      envVars.IDP_CLIENT_ID = config.idp_agent.client_id
+    if (config.idp_agent?.region) {
+      envVars.IDP_AGENT_REGION = config.idp_agent.region
     }
 
     // Create the runtime using L2 construct

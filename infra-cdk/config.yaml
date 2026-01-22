@@ -9,14 +9,8 @@ backend:
   deployment_type: docker # Available deployment types: docker (default), zip
 
 # IDP Bedrock Agent configuration (for document extraction)
-# Note: IDP agent credentials should be stored in SSM Parameter Store:
-#   /<stack_name_base>/idp-agent-client-id
-#   /<stack_name_base>/idp-agent-client-secret (SecureString)
-#   /<stack_name_base>/idp-agent-token-url
+# Uses IAM SigV4 authentication instead of Cognito OAuth2
 idp_agent:
   url: https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A058264111508%3Aruntime%2Fidp_bedrock_agent-7lhBwJ5ipk/invocations?qualifier=DEFAULT
   region: us-east-1
-  # Cognito settings for IDP agent authentication (Machine Client)
-  cognito_domain: idp-bedrock-stack-cm.auth.us-east-1.amazoncognito.com
-  client_id: 3ggudvsuuku77nu882ltbdhlqo
-  # client_secret is stored in Secrets Manager: /FAST-stack/idp-agent-client-secret
+  runtime_arn: arn:aws:bedrock-agentcore:us-east-1:058264111508:runtime/idp_bedrock_agent-7lhBwJ5ipk

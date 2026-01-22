@@ -9,3 +9,6 @@ bedrock-agentcore[strands-agents]>=1.0.6
 
 # AWS SDK
 boto3>=1.35.0
+
+# MCP proxy for AWS IAM SigV4 authentication
+mcp-proxy-for-aws>=0.1.0
