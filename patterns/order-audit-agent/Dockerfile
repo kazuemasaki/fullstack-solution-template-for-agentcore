@@ -31,8 +31,9 @@ USER bedrock_agentcore
 
 EXPOSE 8080
 
-# Copy agent code files
+# Copy agent code files and system prompt
 COPY patterns/order-audit-agent/order_audit_agent.py .
+COPY patterns/order-audit-agent/system_prompt.md .
 
 # Healthcheck using Python (no extra dependencies needed)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
