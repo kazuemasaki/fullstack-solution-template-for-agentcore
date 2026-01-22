@@ -7,7 +7,7 @@ Presigned URL Lambda for Order Upload
 Generates presigned URLs for secure Excel file uploads with:
 - Content-MD5 checksum for data integrity verification
 - UUID-based filename replacement (path traversal protection)
-- 5-minute expiration (AWS recommended)
+- 30-minute expiration
 """
 
 import base64
@@ -78,7 +78,7 @@ def handler(event, context):
     Security features:
     - Filename replaced with UUID (path traversal protection)
     - Content-MD5 checksum (data integrity)
-    - 5-minute expiration (AWS best practice)
+    - 30-minute expiration
     """
     logger.info("Presigned URL request received")
 
@@ -172,11 +172,11 @@ def handler(event, context):
             },
         )
 
-        # Generate GET presigned URL (5 minutes expiration - AWS recommended)
+        # Generate GET presigned URL (30 minutes expiration)
         presigned_url = s3_client.generate_presigned_url(
             "get_object",
             Params={"Bucket": TEMP_BUCKET, "Key": temp_key},
-            ExpiresIn=300,  # 5 minutes
+            ExpiresIn=1800,  # 30 minutes
         )
 
         logger.info(f"Presigned URL generated successfully for {temp_key}")
