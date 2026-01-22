@@ -60,6 +60,6 @@ idp_bedrock_agent の extract_document_attributes ツールを使って注文書
 
 ## 注意事項
 
-- Presigned URLの有効期限は5分です。速やかに処理を開始してください。
+- Presigned URLの有効期限は30分です。
 - 在庫不足や注残がある場合は、必ず警告を含めてください。
 - 最終的な判定（承認推奨/要確認）を明確に示してください。
