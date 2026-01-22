@@ -6,18 +6,19 @@ Order Audit Agent
 
 An agent that audits order documents (Excel files) using:
 - idp_bedrock_agent MCP server for document extraction (via MCP)
-- Order Agent for waiting receipt order queries by SKU (native Strands A2A protocol)
+- Order Agent for waiting receipt order queries by SKU and initial order registration (native Strands A2A protocol)
 - Gateway MCP tools for inventory check
 
 The agent receives a presigned URL to the uploaded order document,
 extracts relevant information, validates it against inventory and
 product waiting receipt data via Agent-to-Agent (A2A) protocol, and provides
-an audit summary.
+an audit summary. When audit is approved (all conditions met), it can automatically
+create an initial order registration via the Order Agent.
 
 Architecture:
 - Uses native Strands A2A protocol for Order Agent communication
 - IDP Agent: Document intelligence and extraction (via MCP)
-- Order Agent: Waiting receipt order queries by SKU (native A2A as a Tool)
+- Order Agent: Waiting receipt order queries by SKU and initial order registration (native A2A as a Tool)
 - Gateway: Direct inventory queries (via MCP)
 
 A2A Integration:
@@ -27,11 +28,23 @@ which wraps the A2A agent as a standard Strands tool. This provides:
 - Type-safe tool definitions
 - Native A2A protocol communication
 - Seamless integration with the agent toolkit
+
+Order Registration Flow:
+When audit result is "approved" and all conditions are satisfied:
+1. Audit agent validates inventory and backorder status
+2. If all checks pass, audit agent calls create_order_registration via A2A
+3. Order Agent creates initial order record in Order Management API
+4. Order ID is returned and included in audit report
+5. Audit agent starts approval workflow via start_approval_workflow
+6. Step Functions state machine sends approval email to approver
+7. Order awaits approver's decision (approve/reject)
 """
 
+import json
 import os
 import traceback
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 import boto3
@@ -318,6 +331,268 @@ class OrderAgentA2ATool:
             print(f"[ORDER AUDIT ERROR] {error_msg}")
             return error_msg
 
+    @tool
+    async def create_order_registration(
+        self, supplier_id: str, items: list[dict[str, Any]], note: str = ""
+    ) -> str:
+        """
+        Create initial order registration via Order Agent (A2A protocol).
+
+        This tool registers a new order in the Order Management system when the
+        audit result is "approved" and all conditions are met (inventory sufficient,
+        no backorder risks). The order will be created with initial status and
+        awaiting formal approval processing.
+
+        IMPORTANT: Only use this tool when ALL of these conditions are met:
+        - ✅ All inventory is sufficient (no shortages)
+        - ✅ No delivery delay risks from backorders
+        - ✅ No issues or unclear points in the order document
+        - ✅ Audit result is "approval recommended"
+
+        Args:
+            supplier_id: Supplier ID from the order document (e.g., "SUP-001"). Required.
+            items: List of order items in format [{"sku": "PRD-001", "qty": 100}, ...]. Required.
+            note: Optional note or comment for the order (e.g., audit comments).
+
+        Returns:
+            Order creation result as a formatted string, including:
+            - Created order ID (orderId)
+            - Supplier ID
+            - Number of items
+            - Registration timestamp
+            - Next steps (awaiting approval)
+
+        Example:
+            >>> await create_order_registration(
+            ...     supplier_id="SUP-001",
+            ...     items=[{"sku": "PRD-001", "qty": 100}, {"sku": "PRD-002", "qty": 50}],
+            ...     note="Audit approved - all conditions satisfied"
+            ... )
+            "✅ Order registered successfully: orderId=ORD-12345..."
+
+        Raises:
+            Error if Order Agent returns an error or if parameters are invalid.
+        """
+        await self._ensure_initialized()
+
+        # Validate required parameters
+        if not supplier_id or not supplier_id.strip():
+            return "Error: supplier_id parameter is required"
+
+        if not items or not isinstance(items, list) or len(items) == 0:
+            return "Error: items parameter is required and must be a non-empty list"
+
+        # Validate items structure
+        for idx, item in enumerate(items):
+            if not isinstance(item, dict):
+                return f"Error: items[{idx}] must be a dictionary with 'sku' and 'qty' keys"
+            if "sku" not in item or "qty" not in item:
+                return f"Error: items[{idx}] must contain both 'sku' and 'qty' keys"
+            if not isinstance(item["qty"], int) or item["qty"] <= 0:
+                return f"Error: items[{idx}].qty must be a positive integer"
+
+        try:
+            # Build order registration message for the Order Agent
+            import json
+
+            order_data = {"supplierId": supplier_id, "items": items}
+            if note:
+                order_data["note"] = note
+
+            query_text = f"Create order registration with data: {json.dumps(order_data, ensure_ascii=False)}"
+            print(f"[ORDER AUDIT] Sending A2A order registration request: supplierId={supplier_id}, items={len(items)}")
+
+            # Create A2A message
+            msg = Message(
+                kind="message",
+                role=Role.user,
+                parts=[Part(TextPart(kind="text", text=query_text))],
+                message_id=uuid4().hex,
+            )
+
+            # Send message and get response
+            response_text = ""
+            async with httpx.AsyncClient(timeout=self.timeout) as httpx_client:
+                config = ClientConfig(httpx_client=httpx_client, streaming=False)
+                factory = ClientFactory(config)
+                client = factory.create(self.agent_card)
+
+                async for event in client.send_message(msg):
+                    if isinstance(event, Message):
+                        for part in event.parts:
+                            if hasattr(part, "text"):
+                                response_text += part.text
+
+            if response_text:
+                print(f"[ORDER AUDIT] Order registration response: {response_text[:200]}...")
+                return response_text
+            else:
+                return f"No response received from {self.agent_name} for order registration"
+
+        except Exception as e:
+            error_msg = f"Error registering order via {self.agent_name} A2A: {str(e)}"
+            print(f"[ORDER AUDIT ERROR] {error_msg}")
+            return error_msg
+
+
+    @tool
+    async def process_approved_order(self, order_id: str) -> str:
+        """
+        Process an approved order by requesting the Order Agent to execute formal order processing.
+
+        This tool is called after an order has been approved by the approver through the
+        approval workflow. It communicates with the Order Agent via A2A protocol to:
+        1. Update approval status to APPROVED in Order Management API
+        2. Upload the complete order document to S3
+
+        IMPORTANT: Only use this tool when:
+        - ✅ The order has been approved by an authorized approver
+        - ✅ The order ID is valid and exists in the system
+        - ✅ You are instructed to execute the formal order processing
+
+        Args:
+            order_id: Order ID that has been approved (e.g., "9cea99bb-ae30-47cf-92df-52f49e260680"). Required.
+
+        Returns:
+            Order processing result as a formatted string, including:
+            - Order ID
+            - Supplier ID
+            - S3 bucket and key where order document is stored
+            - Processing status
+            - Timestamp
+
+        Example:
+            >>> await process_approved_order(order_id="9cea99bb-ae30-47cf-92df-52f49e260680")
+            "✅ Order processed successfully: orderId=9cea99bb-ae30-47cf-92df-52f49e260680, s3://bucket/SUP-001/order.json"
+
+        Raises:
+            Error if Order Agent returns an error or if the order processing fails.
+        """
+        await self._ensure_initialized()
+
+        if not order_id or not order_id.strip():
+            return "Error: order_id parameter is required"
+
+        try:
+            # Build order processing message for the Order Agent
+            # Request to use finalize_approved_order tool
+            query_text = f"注文番号 {order_id} が承認されました。finalize_approved_order ツールを使用して正式な発注処理を実行してください。"
+            print(f"[ORDER AUDIT] Sending A2A order processing request: orderId={order_id}")
+
+            # Create A2A message
+            msg = Message(
+                kind="message",
+                role=Role.user,
+                parts=[Part(TextPart(kind="text", text=query_text))],
+                message_id=uuid4().hex,
+            )
+
+            # Send message and get response
+            response_text = ""
+            async with httpx.AsyncClient(timeout=self.timeout) as httpx_client:
+                config = ClientConfig(httpx_client=httpx_client, streaming=False)
+                factory = ClientFactory(config)
+                client = factory.create(self.agent_card)
+
+                async for event in client.send_message(msg):
+                    if isinstance(event, Message):
+                        for part in event.parts:
+                            if hasattr(part, "text"):
+                                response_text += part.text
+
+            if response_text:
+                print(f"[ORDER AUDIT] Order processing response: {response_text[:200]}...")
+                return response_text
+            else:
+                return f"No response received from {self.agent_name} for order processing"
+
+        except Exception as e:
+            error_msg = f"Error processing approved order via {self.agent_name} A2A: {str(e)}"
+            print(f"[ORDER AUDIT ERROR] {error_msg}")
+            return error_msg
+
+    @tool
+    async def start_approval_workflow(self, order_id: str) -> str:
+        """
+        Start the order approval workflow in Step Functions.
+
+        This tool initiates the approval state machine for a successfully registered order.
+        The workflow will send an approval email to the designated approver and wait for
+        their response.
+
+        IMPORTANT: Only use this tool AFTER successful order registration via create_order_registration.
+        The order_id parameter should be the orderId returned from create_order_registration.
+
+        Args:
+            order_id: Order ID returned from create_order_registration (e.g., "9cea99bb-ae30-47cf-92df-52f49e260680"). Required.
+
+        Returns:
+            Workflow execution result as a formatted string, including:
+            - Execution ARN
+            - State machine ARN
+            - Approval status (pending)
+            - Next steps for approver
+
+        Example:
+            >>> await start_approval_workflow(order_id="9cea99bb-ae30-47cf-92df-52f49e260680")
+            "✅ Approval workflow started: executionArn=arn:aws:states:..."
+
+        Raises:
+            Error if Step Functions execution fails or if environment variables are not set.
+        """
+        if not order_id or not order_id.strip():
+            return "Error: order_id parameter is required"
+
+        # Get Step Functions configuration from environment
+        state_machine_arn = os.environ.get("APPROVAL_STATE_MACHINE_ARN")
+        approver_email = os.environ.get("APPROVAL_APPROVER_EMAIL")
+
+        if not state_machine_arn:
+            return "Error: APPROVAL_STATE_MACHINE_ARN environment variable is not set"
+
+        if not approver_email:
+            return "Error: APPROVAL_APPROVER_EMAIL environment variable is not set"
+
+        try:
+            # Prepare Step Functions input
+            execution_input = {"orderId": order_id, "approverEmail": approver_email}
+
+            print(f"[ORDER AUDIT] Starting approval workflow for order: {order_id}")
+            print(f"[ORDER AUDIT] State machine: {state_machine_arn}")
+            print(f"[ORDER AUDIT] Approver: {approver_email}")
+
+            # Create Step Functions client
+            sfn_client = boto3.client("stepfunctions", region_name=os.environ.get("AWS_REGION", "us-east-1"))
+
+            # Start execution
+            response = sfn_client.start_execution(
+                stateMachineArn=state_machine_arn,
+                name=f"approval-{order_id}-{uuid4().hex[:8]}",  # Unique execution name
+                input=json.dumps(execution_input),
+            )
+
+            execution_arn = response["executionArn"]
+            start_date = response["startDate"].isoformat()
+
+            print(f"[ORDER AUDIT] Approval workflow started: {execution_arn}")
+
+            result_message = (
+                f"✅ 承認ワークフローを開始しました\n\n"
+                f"**発注番号**: {order_id}\n"
+                f"**承認者**: {approver_email}\n"
+                f"**実行ARN**: {execution_arn}\n"
+                f"**開始時刻**: {start_date}\n\n"
+                f"承認者に承認リンクを含むメールが送信されます。\n"
+                f"承認者がリンクをクリックして承認または却下を選択するまで、ワークフローは待機状態になります。"
+            )
+
+            return result_message
+
+        except Exception as e:
+            error_msg = f"Error starting approval workflow: {str(e)}"
+            print(f"[ORDER AUDIT ERROR] {error_msg}")
+            return f"❌ 承認ワークフローの開始に失敗しました: {str(e)}"
+
 
 def create_order_agent_a2a_tool(agent_url: str) -> OrderAgentA2ATool:
     """
@@ -356,7 +631,11 @@ def create_order_audit_agent(user_id: str, session_id: str) -> Agent:
     This agent uses:
     - Gateway MCP client for inventory queries
     - IDP MCP client for document extraction (if configured)
-    - Order Agent A2A tool for waiting receipt order queries by SKU via native Strands A2A (if configured)
+    - Order Agent A2A tools via native Strands A2A (if configured):
+      - list_waiting_receipt_orders_by_sku: Query backlog by SKU
+      - create_order_registration: Create initial order registration when audit is approved
+      - start_approval_workflow: Start Step Functions approval workflow after order registration
+      - process_approved_order: Execute formal order processing after approval
     - AgentCore Memory for conversation history
 
     Agent-to-Agent (A2A) Communication:
@@ -364,6 +643,13 @@ def create_order_audit_agent(user_id: str, session_id: str) -> Agent:
       - Automatic agent card discovery
       - Lazy initialization on first use
       - Direct A2A protocol communication without MCP wrapper
+
+    Approval Workflow Integration:
+    - After successful order registration, agent starts Step Functions state machine
+    - Approval email is sent to designated approver
+    - Workflow awaits approver's decision (approve/reject)
+    - When approved, external Lambda invokes this agent to process the order
+    - Agent then requests Order Agent to execute formal order processing via A2A
     """
     bedrock_model = BedrockModel(model_id="us.anthropic.claude-sonnet-4-5-20250929-v1:0", temperature=0.1)
 
@@ -411,9 +697,16 @@ def create_order_audit_agent(user_id: str, session_id: str) -> Agent:
         if order_agent_url:
             order_agent_tool = create_order_agent_a2a_tool(order_agent_url)
             if order_agent_tool:
-                # Add the tool's method to the tools list
+                # Add the tool's methods to the tools list
                 tools.append(order_agent_tool.list_waiting_receipt_orders_by_sku)
-                print("[ORDER AUDIT] Order Agent A2A tool added for native A2A communication")
+                tools.append(order_agent_tool.create_order_registration)
+                tools.append(order_agent_tool.start_approval_workflow)
+                tools.append(order_agent_tool.process_approved_order)
+                print("[ORDER AUDIT] Order Agent A2A tools added for native A2A communication")
+                print("[ORDER AUDIT] - list_waiting_receipt_orders_by_sku (backlog query)")
+                print("[ORDER AUDIT] - create_order_registration (initial order registration)")
+                print("[ORDER AUDIT] - start_approval_workflow (approval workflow initiation)")
+                print("[ORDER AUDIT] - process_approved_order (approved order processing)")
             else:
                 print("[ORDER AUDIT] Order Agent A2A tool creation failed")
         else:

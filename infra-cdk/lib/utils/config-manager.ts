@@ -23,6 +23,10 @@ export interface AppConfig {
     region: string
     runtime_arn?: string
   }
+  order_approval?: {
+    state_machine_arn: string
+    approver_email: string
+  }
 }
 
 export class ConfigManager {
@@ -68,6 +72,7 @@ export class ConfigManager {
         },
         idp_agent: parsedConfig.idp_agent,
         order_agent: parsedConfig.order_agent,
+        order_approval: parsedConfig.order_approval,
       }
     } catch (error) {
       throw new Error(`Failed to parse configuration file ${configPath}: ${error}`)

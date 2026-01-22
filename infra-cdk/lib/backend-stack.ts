@@ -350,6 +350,18 @@ export class BackendStack extends cdk.NestedStack {
       )
     }
 
+    // Add Step Functions execution permissions (for order approval workflow)
+    if (config.order_approval?.state_machine_arn) {
+      agentRole.addToPolicy(
+        new iam.PolicyStatement({
+          sid: "StepFunctionsStartExecution",
+          effect: iam.Effect.ALLOW,
+          actions: ["states:StartExecution"],
+          resources: [config.order_approval.state_machine_arn],
+        })
+      )
+    }
+
     // Environment variables for the runtime
     const envVars: { [key: string]: string } = {
       AWS_REGION: stack.region,
@@ -372,6 +384,14 @@ export class BackendStack extends cdk.NestedStack {
     }
     if (config.order_agent?.region) {
       envVars.ORDER_AGENT_REGION = config.order_agent.region
+    }
+
+    // Add Order Approval settings if configured (for Step Functions state machine)
+    if (config.order_approval?.state_machine_arn) {
+      envVars.APPROVAL_STATE_MACHINE_ARN = config.order_approval.state_machine_arn
+    }
+    if (config.order_approval?.approver_email) {
+      envVars.APPROVAL_APPROVER_EMAIL = config.order_approval.approver_email
     }
 
     // Create the runtime using L2 construct
