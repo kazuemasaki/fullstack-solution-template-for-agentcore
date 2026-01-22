@@ -14,3 +14,10 @@ idp_agent:
   url: https://bedrock-agentcore.us-east-1.amazonaws.com/runtimes/arn%3Aaws%3Abedrock-agentcore%3Aus-east-1%3A058264111508%3Aruntime%2Fidp_bedrock_agent-7lhBwJ5ipk/invocations?qualifier=DEFAULT
   region: us-east-1
   runtime_arn: arn:aws:bedrock-agentcore:us-east-1:058264111508:runtime/idp_bedrock_agent-7lhBwJ5ipk
+
+# Order Agent configuration (for A2A communication from audit agent)
+# Uses A2A protocol for agent-to-agent communication
+order_agent:
+  url: PLACEHOLDER_ORDER_AGENT_URL # Replace with actual Order Agent URL after deployment
+  region: us-east-1
+  runtime_arn: PLACEHOLDER_ORDER_AGENT_ARN # Replace with actual Order Agent Runtime ARN after deployment

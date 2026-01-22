@@ -335,6 +335,21 @@ export class BackendStack extends cdk.NestedStack {
       )
     }
 
+    // Add Order Agent invoke permissions (for A2A protocol communication)
+    if (config.order_agent?.runtime_arn) {
+      agentRole.addToPolicy(
+        new iam.PolicyStatement({
+          sid: "OrderAgentInvoke",
+          effect: iam.Effect.ALLOW,
+          actions: ["bedrock-agentcore:InvokeAgentRuntime"],
+          resources: [
+            config.order_agent.runtime_arn,
+            `${config.order_agent.runtime_arn}/*`,  // Runtime Endpoint も含める
+          ],
+        })
+      )
+    }
+
     // Environment variables for the runtime
     const envVars: { [key: string]: string } = {
       AWS_REGION: stack.region,
@@ -349,6 +364,14 @@ export class BackendStack extends cdk.NestedStack {
     }
     if (config.idp_agent?.region) {
       envVars.IDP_AGENT_REGION = config.idp_agent.region
+    }
+
+    // Add Order Agent settings if configured (for A2A protocol communication)
+    if (config.order_agent?.url) {
+      envVars.ORDER_AGENT_URL = config.order_agent.url
+    }
+    if (config.order_agent?.region) {
+      envVars.ORDER_AGENT_REGION = config.order_agent.region
     }
 
     // Create the runtime using L2 construct

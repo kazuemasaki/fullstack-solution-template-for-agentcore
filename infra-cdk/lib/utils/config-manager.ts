@@ -18,6 +18,11 @@ export interface AppConfig {
     region: string
     runtime_arn?: string
   }
+  order_agent?: {
+    url: string
+    region: string
+    runtime_arn?: string
+  }
 }
 
 export class ConfigManager {
@@ -62,6 +67,7 @@ export class ConfigManager {
           deployment_type: deploymentType,
         },
         idp_agent: parsedConfig.idp_agent,
+        order_agent: parsedConfig.order_agent,
       }
     } catch (error) {
       throw new Error(`Failed to parse configuration file ${configPath}: ${error}`)

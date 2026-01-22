@@ -1,8 +1,11 @@
-# Core agent framework
-strands-agents>=1.16.0
+# Core agent framework with A2A support
+strands-agents[a2a]>=1.16.0
 
 # MCP protocol support
 mcp>=1.23.1
+
+# HTTP client for A2A communication
+httpx>=0.27.0
 
 # Bedrock AgentCore integration
 bedrock-agentcore[strands-agents]>=1.0.6
